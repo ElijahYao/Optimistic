@@ -24,28 +24,27 @@ investors:
 
 Section1 交易者首页: 
 
-
 展示的数据:
 
 	1. 获取当前交易周期 ID: epochId
-	2. 当前交易周期周期价格区间: [minStrikePrice, maxStrikePrice]. 
+	2. 当前交易周期周期价格区间: [minStrikePrice, maxStrikePrice], uint / 10^8 = 真实的 USDC 价格
 	3. 当前交易周期结算时间区间: [curEpochStartTime, curEpochEndTime].
 	4. K 线图, 看下能不能复用简易期权 ETH 的 K 线。
 	5. 当前 wallet 的 USDC 数量。
+	6. 当前 wallet 已实现利润, 待提取: 调用 contract 中 traderProfitPool[msg.sender]。
 
 用户交互: 
 
 	1. 购买期权调用 buy 方法:
 
-		buy(uint strikeTime, int strikePrice, bool optionType, uint produtepochId, int _amount)
+		function buy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int _amount).
 
 		strikeTime: 结束时间, 暂时直接传当前的 curEpochEndTime。
 		strikePrice: 做一个滑动窗口，用户可以在 [minStrikePrice, maxStrikePrice] 随便选，必须是整数。
 		optionType, CALL 是 true, PUT 是 false 
 		produtepochId: 当前的 epochId, 前端存一个 epochId, 定期刷一下。
+		buyPrice: 购买期权的价格, 前端随机一个 5 - 100 的整数 * 10^4 就行, 这个计算公式后续会提供给前端, 需要读一个链上数据。
 		_amount: 使用的 USDC 数量。
-
-
 
 
 Section2 LP投资人界面: 
@@ -60,12 +59,16 @@ Section2 LP投资人界面:
 
 	1. 展示当前的总资金池大小. 
 	2. 展示当前用户投资的资金大小。
-	2. withdraw 提款, 调用 investorWithDraw 。
-	3. deposit 提款, 调用 investorDeposit。
-	4. 在 withdraw 和 deposit 可以通过滑动计算投资后份额是多少。
-
+	3. withdraw 提款, 调用 investorWithDraw 。
+	4. deposit 提款, 调用 investorDeposit。
+	5. 在 withdraw 和 deposit 可以通过滑动计算投资后份额是多少。
+	
 
 Section3 历史仓位。
+	
+	1. TODO 需要提供个 API
+    
 
 Section4 当前持仓。
 
+	1. traderOptionOrders[msg.sender][epochId]
