@@ -33,7 +33,7 @@ contract Optimistic {
     int public curRoundLockedBalance = 0;                   // 当前交易周期锁定 USDC 数量
     address[] investors;                                    // 当前交易周期 LP 列表
     address[] newDepositers;                                // 当前交易周期新存款者列表
-    address[] newWithdrawers;                               // 当前交易周期新提款者列表
+    address[] newWithdrawers;                               // 当前交易周期新提款
 
     // traders 相关变量
     int256 traderPool = 0;
@@ -48,8 +48,9 @@ contract Optimistic {
         string status;
     }
 
-    int public immutable PRICEDEMICAL = int256(1e6);
-    int public immutable PRICEGAP = int256(1e2);
+    int public immutable PRICEDEMICAL = int(1e8);
+    int public immutable USDCDEMICAL = int(1e6);
+    int public immutable PRICEGAP = int(1e2);
 
     AggregatorV3Interface internal priceFeed;
     mapping (address => mapping (uint => OptionOrder[])) public traderOptionOrders;
@@ -151,7 +152,7 @@ contract Optimistic {
     }
 
     function getOptionPrice() public view returns (int) {
-        return (createRandom(96) + 5) * PRICEDEMICAL / 100;
+        return (createRandom(96) + 5) * USDCDEMICAL / 100;
     }
 
     function buy(uint strikeTime, int strikePrice, bool optionType, uint produtepochId, int _amount) public runningEpoch {
@@ -160,16 +161,16 @@ contract Optimistic {
         require (strikeTime > getNow(), "strikeTime invalid.");
         require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "strikePrice invalid.");
         require (_amount >= 50, "_amount invalid.");
-        traderPool += _amount * PRICEDEMICAL;
+        traderPool += _amount * USDCDEMICAL;
         int optionPrice = getOptionPrice();
 
         console.log("optionPrice :", uint(optionPrice));
-        console.log("_amount : ", uint(_amount * PRICEDEMICAL));
+        console.log("_amount : ", uint(_amount * USDCDEMICAL));
 
-        int orderSize = (_amount * PRICEDEMICAL) / optionPrice;
+        int orderSize = (_amount * USDCDEMICAL) / optionPrice;
         require (orderSize > 0, "orderSize smaller than 1.");
-        require (totalBalance - curRoundLockedBalance >= orderSize * PRICEDEMICAL);
-        curRoundLockedBalance += orderSize * PRICEDEMICAL;
+        require (totalBalance - curRoundLockedBalance >= orderSize * USDCDEMICAL);
+        curRoundLockedBalance += orderSize * USDCDEMICAL;
 
         console.log("orderSize", uint(orderSize));
 
@@ -188,7 +189,7 @@ contract Optimistic {
             curEpochTraders.push(msg.sender);
         }
         curEpochTraderOrderLength[msg.sender] += 1;
-        curEpochTotalProfit += _amount * PRICEDEMICAL;
+        curEpochTotalProfit += _amount * USDCDEMICAL;
     }
 
     // 计算当前 EPOCH 的期权利润。
@@ -215,7 +216,7 @@ contract Optimistic {
 
                 if (optionType == true) {
                     if (settlePrice >= traderOptionOrders[trader][epochId][j].option.strikePrice) {
-                        curEpochTotalProfit -= orderSize * PRICEDEMICAL;
+                        curEpochTotalProfit -= orderSize * USDCDEMICAL;
                         curTraderSettledSize += orderSize;
                         console.log("Value=1, orderNum=", j, "strikePrice=", uint(traderOptionOrders[trader][epochId][j].option.strikePrice));
                     } else {
@@ -223,7 +224,7 @@ contract Optimistic {
                     }
                 } else {
                     if (settlePrice <= traderOptionOrders[trader][epochId][j].option.strikePrice) {
-                        curEpochTotalProfit -= orderSize * PRICEDEMICAL;
+                        curEpochTotalProfit -= orderSize * USDCDEMICAL;
                         curTraderSettledSize += orderSize;
                         console.log("Value=1, orderNum=", j, "strikePrice=", uint(traderOptionOrders[trader][epochId][j].option.strikePrice));
                     } else {
@@ -231,7 +232,7 @@ contract Optimistic {
                     }
                 }
             }
-            traderProfitPool[trader] += curTraderSettledSize * PRICEDEMICAL;
+            traderProfitPool[trader] += curTraderSettledSize * USDCDEMICAL;
             curEpochTraderOrderLength[trader] = 0;
         }
         curEpochTraders = new address[](0);
