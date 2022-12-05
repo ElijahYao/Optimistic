@@ -3,7 +3,19 @@ pragma solidity >=0.7.0 <0.9.0;
 import "hardhat/console.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
+interface USDC {
+
+    function balanceOf(address account) external view returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
+
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+
+}
+
 contract Optimistic {
+    USDC public usdc_yaozhihan;
     // Global
     address public owner;
     uint public epochId;
@@ -26,6 +38,7 @@ contract Optimistic {
     // LP investors 资金池相关变量
     // 当前资金池, 新一轮存款请求, 新一轮提款请求
     mapping (address => int) public liquidityPool;          // 资金池 addr -> USDC 数量
+    mapping (address => int) public investorsWithdrawPool;           // 提款池 addr -> USDC 数量
     mapping (address => int) public newDepositRequest;      // 存款请求 addr -> USDC 数量
     mapping (address => int) public newWithdraRequest;      // 提款请求 addr -> USDC 数量
 
@@ -85,7 +98,10 @@ contract Optimistic {
             0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e
         );
         optimisticBalance = 0;
+        usdc_yaozhihan = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
+        transferUSDC=false;
     }
+    
     /**
      * Returns the latest price
      */
@@ -125,30 +141,64 @@ contract Optimistic {
         return ;
     }
 
-    function traderDeposit(int _amount) public {
+    function changeUSDCtransfer(bool status) public isOwner{
+        transferUSDC = status;
+    }
+
+    function traderWithdraw(int _amount) public {
         require (traderProfitPool[msg.sender] >= 0, "no profit");
-        require (_amount * PRICEDEMICAL <= traderProfitPool[msg.sender], "insufficient profit");
-        traderProfitPool[msg.sender] -= _amount * PRICEDEMICAL;
+        require (_amount * USDCDEMICAL <= traderProfitPool[msg.sender], "insufficient profit");
+        if (transferUSDC) {
+            bool success = usdc_yaozhihan.transfer(msg.sender, uint(_amount * USDCDEMICAL));
+            require(success, "error transfer usdc");
+        }
+        traderProfitPool[msg.sender] -= _amount * USDCDEMICAL;
     }
 
     function investorDeposit(int _amount) public {
         require ((epochId == curProfitEpoch + 1 && curProfitEpoch == curSettleEpoch && curSettleEpoch == curDepositEpoch) || epochId == 0, "invalid deposit time, current epoch is settling.");
         require(_amount >= 100, "invest amount less than 100 USDC.");
-        _amount = _amount * PRICEDEMICAL;
+        _amount = _amount * USDCDEMICAL;
+        uint256 balance = usdc_yaozhihan.balanceOf(msg.sender);
+        require(balance >= uint(_amount), "insufficient token");
+        if (transferUSDC) {
+            bool success = usdc_yaozhihan.transferFrom(msg.sender, address(this), uint(_amount));
+            require(success, "error transfer usdc");
+        }
         if (newDepositRequest[msg.sender] == 0) {
             newDepositers.push(msg.sender);
         }
         newDepositRequest[msg.sender] += _amount;
+        
     }
 
     function investorWithDraw(int _amount) public {
         require ((epochId == curProfitEpoch + 1 && curProfitEpoch == curSettleEpoch && curSettleEpoch == curDepositEpoch), " invalid withdraw time, currrent epoch is setting.");
         require (curInvestorExist(msg.sender), "invalid investor.");
-        _amount = _amount * PRICEDEMICAL;
+        _amount = _amount * USDCDEMICAL;
         if (newWithdraRequest[msg.sender] == 0) {
             newWithdrawers.push(msg.sender);
         }
         newWithdraRequest[msg.sender] += _amount;
+    }
+
+    function investorActualWithDrawAll() public {
+        require (investorsWithdrawPool[msg.sender] > 0, "insufficient funds");
+        int amount = investorsWithdrawPool[msg.sender];
+        if (transferUSDC) {
+            bool success = usdc_yaozhihan.transfer(msg.sender, uint(amount));
+            require (success, "error transfer usdc");
+        }
+        delete investorsWithdrawPool[msg.sender];
+    }
+
+    function investorActualWithDraw(int amount) public {
+        require (investorsWithdrawPool[msg.sender] >= amount * USDCDEMICAL, "insufficient funds");
+        if (transferUSDC) {
+            bool success = usdc_yaozhihan.transfer(msg.sender, uint(amount * USDCDEMICAL));
+            require (success, "error transfer usdc");
+        }
+        investorsWithdrawPool[msg.sender] -= amount * USDCDEMICAL;
     }
 
     function getOptionPrice() public view returns (int) {
@@ -161,6 +211,13 @@ contract Optimistic {
         require (strikeTime > getNow(), "strikeTime invalid.");
         require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "strikePrice invalid.");
         require (_amount >= 50, "_amount invalid.");
+        uint256 balance = usdc_yaozhihan.balanceOf(msg.sender);
+        require (balance >= uint(_amount * USDCDEMICAL), "insufficient funds");
+        if (transferUSDC) {
+            bool success = usdc_yaozhihan.transferFrom(msg.sender, address(this), uint(_amount * USDCDEMICAL));
+            require(success, "error transfer usdc");
+        }
+
         traderPool += _amount * USDCDEMICAL;
         int optionPrice = getOptionPrice();
 
@@ -190,6 +247,7 @@ contract Optimistic {
         }
         curEpochTraderOrderLength[msg.sender] += 1;
         curEpochTotalProfit += _amount * USDCDEMICAL;
+
     }
 
     // 计算当前 EPOCH 的期权利润。
@@ -256,6 +314,7 @@ contract Optimistic {
             console.log("investor lp amount updated:", uint(liquidityPool[investor]));
             if (newWithdraRequest[investor] > 0) {
                 if (liquidityPool[investor] >= newWithdraRequest[investor]) {
+                    investorsWithdrawPool[investor] += newWithdraRequest[investor];
                     liquidityPool[investor] -= newWithdraRequest[investor];
                 }
                 delete newWithdraRequest[investor];
