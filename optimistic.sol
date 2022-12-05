@@ -4,31 +4,27 @@ import "hardhat/console.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 interface USDC {
-
     function balanceOf(address account) external view returns (uint256);
     function allowance(address owner, address spender) external view returns (uint256);
-
     function transfer(address recipient, uint256 amount) external returns (bool);
     function approve(address spender, uint256 amount) external returns (bool);
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-
 }
 
 contract Optimistic {
-    USDC public usdc_service;
     // Global
+    USDC public USDCProtocol;
     address public owner;
     uint public epochId;
     uint initialNumber = 0;
+    bool transferUSDC = false;                              // 是否交易 USDC
 
-    bool transferUSDC = false;
-
-    // Epoch 相关变量 
+    // Epoch 相关变量
     int public curEpochTotalProfit;                         // 当前 Epoch 利润
 
-    uint curProfitEpoch;                                    // 当前 Traders 利润结算计算完成的 EpochId
-    uint curSettleEpoch;                                    // 当前 LP investors 资金结算完成的 EpochId
-    uint curDepositEpoch;                                   // 当前 LP investors 处理完新请求的 EpochId
+    uint curProfitEpochId;                                  // 当前 Traders 利润结算计算完成的 EpochId
+    uint curSettleEpochId;                                  // 当前 LP investors 资金结算完成的 EpochId
+    uint curDepositEpochId;                                 // 当前 LP investors 处理完新请求的 EpochId
 
     uint256 public curEpochStartTime;                       // 当前 Epoch 开始时间。
     uint256 public curEpochEndTime;                         // 当前 Epoch 结束时间。
@@ -49,7 +45,6 @@ contract Optimistic {
     address[] newWithdrawers;                               // 当前交易周期新提款
 
     // traders 相关变量
-    int256 traderPool = 0;
     struct Option {
         int strikePrice;
         uint strikeTime;
@@ -60,10 +55,15 @@ contract Optimistic {
         int orderSize;
         string status;
     }
+    int public immutable PRICEDEMICAL = 10 ** 8;
+    int public immutable USDCDEMICAL = 10 ** 6;
+    int public immutable PRICEGAP = 10 ** 2;
 
-    int public immutable PRICEDEMICAL = int(1e8);
-    int public immutable USDCDEMICAL = int(1e6);
-    int public immutable PRICEGAP = int(1e2);
+    int public immutable MINSELLPRICE = (5 * 10 ** 6 / 100);
+    int public immutable MAXSELLPRICE = (100 * 10 ** 6 / 100);
+    int public immutable MINBUYPRICE = (5 * 10 ** 6 / 100);
+    int public immutable MAXBUYPRICE = (100 * 10 ** 6 / 100);
+
 
     AggregatorV3Interface internal priceFeed;
     mapping (address => mapping (uint => OptionOrder[])) public traderOptionOrders;
@@ -73,7 +73,7 @@ contract Optimistic {
     address[] curEpochTraders;
 
     // Optimistic 定义变量
-    uint public optimisticBalance;
+    int public optimisticBalance;
 
     // Ends
     modifier isOwner() {
@@ -82,7 +82,7 @@ contract Optimistic {
     }
 
     modifier runningEpoch() {
-        require (epochId == curProfitEpoch + 1 && curProfitEpoch == curSettleEpoch && curSettleEpoch == curDepositEpoch, "there is no epoch active.");
+        require (epochId == curProfitEpochId + 1 && curProfitEpochId == curSettleEpochId && curSettleEpochId == curDepositEpochId, "there is no epoch active.");
         _;
     }
 
@@ -90,18 +90,18 @@ contract Optimistic {
         owner = msg.sender;
         epochId = 0;
         totalBalance = 0;
-        curSettleEpoch = 0;
-        curProfitEpoch = 0;
-        curDepositEpoch = 0;
+        curSettleEpochId = 0;
+        curProfitEpochId = 0;
+        curDepositEpochId = 0;
         curEpochTotalProfit = 0;
         priceFeed = AggregatorV3Interface(
             0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e
         );
         optimisticBalance = 0;
-        usdc_service = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
-        transferUSDC=false;
+        USDCProtocol = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
+        transferUSDC = false;
     }
-    
+
     /**
      * Returns the latest price
      */
@@ -137,39 +137,42 @@ contract Optimistic {
         return false;
     }
 
-    function optimisticDeposit(int _amount) public isOwner{
-        return ;
+    function optimisticWithDraw(int _amount) public isOwner {
+        require (_amount * USDCDEMICAL <= optimisticBalance);
+        bool success = USDCProtocol.transferFrom(address(this), owner, uint(_amount * USDCDEMICAL));
+        require (success, "error transfer usdc.");
+        optimisticBalance -= _amount * USDCDEMICAL;
     }
 
     function traderWithdraw(int _amount) public {
-        require (traderProfitPool[msg.sender] >= 0, "no profit");
-        require (_amount * USDCDEMICAL <= traderProfitPool[msg.sender], "insufficient profit");
+        require (traderProfitPool[msg.sender] >= 0, "no profit.");
+        require (_amount * USDCDEMICAL <= traderProfitPool[msg.sender], "insufficient profit.");
         if (transferUSDC) {
-            bool success = usdc_service.transfer(msg.sender, uint(_amount * USDCDEMICAL));
-            require(success, "error transfer usdc");
+            bool success = USDCProtocol.transfer(msg.sender, uint(_amount * USDCDEMICAL));
+            require(success, "error transfer usdc.");
         }
         traderProfitPool[msg.sender] -= _amount * USDCDEMICAL;
     }
 
     function investorDeposit(int _amount) public {
-        require ((epochId == curProfitEpoch + 1 && curProfitEpoch == curSettleEpoch && curSettleEpoch == curDepositEpoch) || epochId == 0, "invalid deposit time, current epoch is settling.");
+        require ((epochId == curProfitEpochId + 1 && curProfitEpochId == curSettleEpochId && curSettleEpochId == curDepositEpochId) || epochId == 0, "invalid deposit time, current epoch is settling.");
         require(_amount >= 100, "invest amount less than 100 USDC.");
         _amount = _amount * USDCDEMICAL;
-        uint256 balance = usdc_service.balanceOf(msg.sender);
+        uint256 balance = USDCProtocol.balanceOf(msg.sender);
         require(balance >= uint(_amount), "insufficient token");
         if (transferUSDC) {
-            bool success = usdc_service.transferFrom(msg.sender, address(this), uint(_amount));
+            bool success = USDCProtocol.transferFrom(msg.sender, address(this), uint(_amount));
             require(success, "error transfer usdc");
         }
         if (newDepositRequest[msg.sender] == 0) {
             newDepositers.push(msg.sender);
         }
         newDepositRequest[msg.sender] += _amount;
-        
+
     }
 
     function investorWithDraw(int _amount) public {
-        require ((epochId == curProfitEpoch + 1 && curProfitEpoch == curSettleEpoch && curSettleEpoch == curDepositEpoch), " invalid withdraw time, currrent epoch is setting.");
+        require ((epochId == curProfitEpochId + 1 && curProfitEpochId == curSettleEpochId && curSettleEpochId == curDepositEpochId), "invalid withdraw time, currrent epoch is setting.");
         require (curInvestorExist(msg.sender), "invalid investor.");
         _amount = _amount * USDCDEMICAL;
         if (newWithdraRequest[msg.sender] == 0) {
@@ -182,7 +185,7 @@ contract Optimistic {
         require (investorsWithdrawPool[msg.sender] > 0, "insufficient funds");
         int amount = investorsWithdrawPool[msg.sender];
         if (transferUSDC) {
-            bool success = usdc_service.transfer(msg.sender, uint(amount));
+            bool success = USDCProtocol.transfer(msg.sender, uint(amount));
             require (success, "error transfer usdc");
         }
         delete investorsWithdrawPool[msg.sender];
@@ -191,7 +194,7 @@ contract Optimistic {
     function investorActualWithDraw(int amount) public {
         require (investorsWithdrawPool[msg.sender] >= amount * USDCDEMICAL, "insufficient funds");
         if (transferUSDC) {
-            bool success = usdc_service.transfer(msg.sender, uint(amount * USDCDEMICAL));
+            bool success = USDCProtocol.transfer(msg.sender, uint(amount * USDCDEMICAL));
             require (success, "error transfer usdc");
         }
         investorsWithdrawPool[msg.sender] -= amount * USDCDEMICAL;
@@ -201,31 +204,49 @@ contract Optimistic {
         return (createRandom(96) + 5) * USDCDEMICAL / 100;
     }
 
-    function buy(uint strikeTime, int strikePrice, bool optionType, uint produtepochId, int _amount) public runningEpoch {
-        require (epochId >= 1 && epochId == produtepochId, "epochId invalid.");
-        require (strikeTime >= curEpochStartTime && strikeTime <= curEpochEndTime, "strikeTime invalid.");
-        require (strikeTime > getNow(), "strikeTime invalid.");
-        require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "strikePrice invalid.");
-        require (_amount >= 50, "_amount invalid.");
-        uint256 balance = usdc_service.balanceOf(msg.sender);
-        require (balance >= uint(_amount * USDCDEMICAL), "insufficient funds");
+    function sell(uint productEpochId, uint orderIndex, int sellPrice) public runningEpoch {
+        require (epochId == productEpochId, "invalid epochId, productEpochId != epochId.");
+        require (orderIndex < curEpochTraderOrderLength[msg.sender], "invalid orderIndex, no such order.");
+        require (sellPrice >= MINSELLPRICE && sellPrice <= MAXSELLPRICE, "invalid sell price.");
+        require (sellPrice % (10 ** 4) == 0, "invalid sell price.");
+
+        string memory orderStatus = traderOptionOrders[msg.sender][epochId][orderIndex].status;
+        require (compareStrings(orderStatus, "opened"), "current order is not opened.");
+
+        // 赎回成功的逻辑
+        int orderSize = traderOptionOrders[msg.sender][epochId][orderIndex].orderSize;
+
+        traderProfitPool[msg.sender] += orderSize * sellPrice;
+        traderOptionOrders[msg.sender][epochId][orderIndex].status = "closed";
+        curRoundLockedBalance -= orderSize * 1 * USDCDEMICAL;
+        curEpochTotalProfit -= orderSize * sellPrice;
+    }
+
+    function buy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int _amount) public runningEpoch {
+        require (epochId >= 1 && epochId == productEpochId, "invalid epochId.");
+        require (strikeTime >= curEpochStartTime && strikeTime <= curEpochEndTime, "invalid strikeTime.");
+        require (strikeTime > getNow(), "invalid strikeTime.");
+        require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "invalid strikePrice.");
+        require (_amount >= 50, "invalid _amount.");
+        require (buyPrice >= MINBUYPRICE && buyPrice <= MAXBUYPRICE, "invalid buy price.");
+        require (buyPrice % (10 ** 4) == 0, "invalid buy price.");
+
+        // 检查 orderSize & 是否支持当前的购买
+        int orderSize = (_amount * USDCDEMICAL) / buyPrice; 
+        require (orderSize > 0, "orderSize smaller than 1.");
+        require (totalBalance - curRoundLockedBalance >= orderSize * USDCDEMICAL, "insufficient option supply.");
+
+        // 检查用户 USDC 是否充足。
+        uint balance = USDCProtocol.balanceOf(msg.sender);
+        require (balance >= uint(_amount * USDCDEMICAL), "insufficient USDC funds");
+
         if (transferUSDC) {
-            bool success = usdc_service.transferFrom(msg.sender, address(this), uint(_amount * USDCDEMICAL));
+            bool success = USDCProtocol.transferFrom(msg.sender, address(this), uint(_amount * USDCDEMICAL));
             require(success, "error transfer usdc");
         }
 
-        traderPool += _amount * USDCDEMICAL;
-        int optionPrice = getOptionPrice();
-
-        console.log("optionPrice :", uint(optionPrice));
-        console.log("_amount : ", uint(_amount * USDCDEMICAL));
-
-        int orderSize = (_amount * USDCDEMICAL) / optionPrice;
-        require (orderSize > 0, "orderSize smaller than 1.");
-        require (totalBalance - curRoundLockedBalance >= orderSize * USDCDEMICAL);
-        curRoundLockedBalance += orderSize * USDCDEMICAL;
-
-        console.log("orderSize", uint(orderSize));
+        // 购买成功的逻辑
+        curRoundLockedBalance += orderSize * 1 * USDCDEMICAL;
 
         Option memory option;
         option.strikePrice = strikePrice;
@@ -243,18 +264,17 @@ contract Optimistic {
         }
         curEpochTraderOrderLength[msg.sender] += 1;
         curEpochTotalProfit += _amount * USDCDEMICAL;
-
     }
 
     // 计算当前 EPOCH 的期权利润。
     function calculateTraderProfits() public isOwner {
-        require (epochId == curProfitEpoch + 1);
-        require (curProfitEpoch == curSettleEpoch && curProfitEpoch == curDepositEpoch);
-        
+        require (epochId == curProfitEpochId + 1);
+        require (curProfitEpochId == curSettleEpochId && curProfitEpochId == curDepositEpochId);
+
         int settlePrice = (1105 + createRandom(200)) * PRICEDEMICAL;
         console.log("epochId:", epochId, " settlePrice:", uint(settlePrice));
 
-        curProfitEpoch = epochId;
+        curProfitEpochId = epochId;
         for (uint i = 0; i < curEpochTraders.length; ++i) {
             address trader = curEpochTraders[i];
             uint orderNum = curEpochTraderOrderLength[trader];
@@ -272,17 +292,11 @@ contract Optimistic {
                     if (settlePrice >= traderOptionOrders[trader][epochId][j].option.strikePrice) {
                         curEpochTotalProfit -= orderSize * USDCDEMICAL;
                         curTraderSettledSize += orderSize;
-                        console.log("Value=1, orderNum=", j, "strikePrice=", uint(traderOptionOrders[trader][epochId][j].option.strikePrice));
-                    } else {
-                        console.log("Value=0, orderNum=", j, "strikePrice=", uint(traderOptionOrders[trader][epochId][j].option.strikePrice));
                     }
                 } else {
                     if (settlePrice <= traderOptionOrders[trader][epochId][j].option.strikePrice) {
                         curEpochTotalProfit -= orderSize * USDCDEMICAL;
                         curTraderSettledSize += orderSize;
-                        console.log("Value=1, orderNum=", j, "strikePrice=", uint(traderOptionOrders[trader][epochId][j].option.strikePrice));
-                    } else {
-                        console.log("Value=0, orderNum=", j, "strikePrice=", uint(traderOptionOrders[trader][epochId][j].option.strikePrice));
                     }
                 }
             }
@@ -294,12 +308,12 @@ contract Optimistic {
 
     // 对当前 EPOCH 的 invesotrs 的利润进行结算。
     function handleSettlement() public isOwner {
-        require (epochId == curProfitEpoch && curProfitEpoch == curSettleEpoch + 1 && curSettleEpoch == curDepositEpoch);
+        require (epochId == curProfitEpochId && curProfitEpochId == curSettleEpochId + 1 && curSettleEpochId == curDepositEpochId);
         int curRoundProfit = curEpochTotalProfit;
         // 根据这一轮的 Profit 计算新的 Balance 对于每个投资人。
         int newTotalBalance = 0;
         console.log("investor length:", investors.length);
-        for (uint i = 0; i < investors.length; ++i) {    
+        for (uint i = 0; i < investors.length; ++i) {
             address investor = investors[i];
             console.log("investor addr:", investor);
             console.log("investor lp amount origin:", uint(liquidityPool[investor]));
@@ -318,14 +332,14 @@ contract Optimistic {
             newTotalBalance += liquidityPool[investor];
         }
         newWithdrawers = new address[](0);
-        curSettleEpoch = curProfitEpoch;
+        curSettleEpochId = curProfitEpochId;
         totalBalance = newTotalBalance;
         curRoundLockedBalance = 0;
     }
 
     // 当前 EPOCH 结束时, 处理新的 investors 的请求。
     function handleDepositRequest() public isOwner {
-        require (epochId == curProfitEpoch && curProfitEpoch == curSettleEpoch && curSettleEpoch == curDepositEpoch + 1);
+        require (epochId == curProfitEpochId && curProfitEpochId == curSettleEpochId && curSettleEpochId == curDepositEpochId + 1);
         int256 newTotalBalance = totalBalance;
         for (uint i = 0; i < newDepositers.length; ++i) {
             address depositer = newDepositers[i];
@@ -338,11 +352,11 @@ contract Optimistic {
             delete newDepositRequest[depositer];
         }
         newDepositers = new address[](0);
-        curDepositEpoch = curSettleEpoch;
+        curDepositEpochId = curSettleEpochId;
         totalBalance = newTotalBalance;
     }
 
-    // 处理第一轮的投资请求, 计算 totalBalance, 
+    // 处理第一轮的投资请求, 计算 totalBalance,
     function handleFirstDepositProcess() private isOwner {
         require (epochId == 0, "this is not first deposit process");
         int startingBalance = 0;
@@ -359,9 +373,9 @@ contract Optimistic {
         totalBalance = startingBalance;
     }
 
-    function startNewEpoch(uint256 period) public isOwner {
-        require (epochId == curProfitEpoch && epochId == curSettleEpoch && epochId == curDepositEpoch, "invalid epochId.");
-        require (period == 10 * 60);
+    function startNewEpoch() public isOwner {
+        require (epochId == curProfitEpochId && epochId == curSettleEpochId && epochId == curDepositEpochId, "invalid epochId.");
+        uint period = 600;
         curEpochStartTime = getNow();
         curEpochEndTime = curEpochStartTime + period;
         int lastRoundPrice = getLatestPrice();
