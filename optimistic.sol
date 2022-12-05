@@ -15,7 +15,7 @@ interface USDC {
 }
 
 contract Optimistic {
-    USDC public usdc_yaozhihan;
+    USDC public usdc_service;
     // Global
     address public owner;
     uint public epochId;
@@ -98,7 +98,7 @@ contract Optimistic {
             0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e
         );
         optimisticBalance = 0;
-        usdc_yaozhihan = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
+        usdc_service = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
         transferUSDC=false;
     }
     
@@ -141,15 +141,11 @@ contract Optimistic {
         return ;
     }
 
-    function changeUSDCtransfer(bool status) public isOwner{
-        transferUSDC = status;
-    }
-
     function traderWithdraw(int _amount) public {
         require (traderProfitPool[msg.sender] >= 0, "no profit");
         require (_amount * USDCDEMICAL <= traderProfitPool[msg.sender], "insufficient profit");
         if (transferUSDC) {
-            bool success = usdc_yaozhihan.transfer(msg.sender, uint(_amount * USDCDEMICAL));
+            bool success = usdc_service.transfer(msg.sender, uint(_amount * USDCDEMICAL));
             require(success, "error transfer usdc");
         }
         traderProfitPool[msg.sender] -= _amount * USDCDEMICAL;
@@ -159,10 +155,10 @@ contract Optimistic {
         require ((epochId == curProfitEpoch + 1 && curProfitEpoch == curSettleEpoch && curSettleEpoch == curDepositEpoch) || epochId == 0, "invalid deposit time, current epoch is settling.");
         require(_amount >= 100, "invest amount less than 100 USDC.");
         _amount = _amount * USDCDEMICAL;
-        uint256 balance = usdc_yaozhihan.balanceOf(msg.sender);
+        uint256 balance = usdc_service.balanceOf(msg.sender);
         require(balance >= uint(_amount), "insufficient token");
         if (transferUSDC) {
-            bool success = usdc_yaozhihan.transferFrom(msg.sender, address(this), uint(_amount));
+            bool success = usdc_service.transferFrom(msg.sender, address(this), uint(_amount));
             require(success, "error transfer usdc");
         }
         if (newDepositRequest[msg.sender] == 0) {
@@ -186,7 +182,7 @@ contract Optimistic {
         require (investorsWithdrawPool[msg.sender] > 0, "insufficient funds");
         int amount = investorsWithdrawPool[msg.sender];
         if (transferUSDC) {
-            bool success = usdc_yaozhihan.transfer(msg.sender, uint(amount));
+            bool success = usdc_service.transfer(msg.sender, uint(amount));
             require (success, "error transfer usdc");
         }
         delete investorsWithdrawPool[msg.sender];
@@ -195,7 +191,7 @@ contract Optimistic {
     function investorActualWithDraw(int amount) public {
         require (investorsWithdrawPool[msg.sender] >= amount * USDCDEMICAL, "insufficient funds");
         if (transferUSDC) {
-            bool success = usdc_yaozhihan.transfer(msg.sender, uint(amount * USDCDEMICAL));
+            bool success = usdc_service.transfer(msg.sender, uint(amount * USDCDEMICAL));
             require (success, "error transfer usdc");
         }
         investorsWithdrawPool[msg.sender] -= amount * USDCDEMICAL;
@@ -211,10 +207,10 @@ contract Optimistic {
         require (strikeTime > getNow(), "strikeTime invalid.");
         require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "strikePrice invalid.");
         require (_amount >= 50, "_amount invalid.");
-        uint256 balance = usdc_yaozhihan.balanceOf(msg.sender);
+        uint256 balance = usdc_service.balanceOf(msg.sender);
         require (balance >= uint(_amount * USDCDEMICAL), "insufficient funds");
         if (transferUSDC) {
-            bool success = usdc_yaozhihan.transferFrom(msg.sender, address(this), uint(_amount * USDCDEMICAL));
+            bool success = usdc_service.transferFrom(msg.sender, address(this), uint(_amount * USDCDEMICAL));
             require(success, "error transfer usdc");
         }
 
