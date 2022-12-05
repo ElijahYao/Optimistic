@@ -12,28 +12,28 @@ contract Optimistic {
     bool transferUSDC = false;
 
     // Epoch 相关变量 
-    int public curEpochTotalProfit;  // 当前 Epoch 利润
+    int public curEpochTotalProfit;                         // 当前 Epoch 利润
 
-    uint curProfitEpoch;   // 当前 Traders 利润结算计算完成的 EpochId
-    uint curSettleEpoch;   // 当前 LP investors 资金结算完成的 EpochId
-    uint curDepositEpoch;   // 当前 LP investors 处理完新请求的 EpochId
+    uint curProfitEpoch;                                    // 当前 Traders 利润结算计算完成的 EpochId
+    uint curSettleEpoch;                                    // 当前 LP investors 资金结算完成的 EpochId
+    uint curDepositEpoch;                                   // 当前 LP investors 处理完新请求的 EpochId
 
-    uint256 curEpochStartTime;      // 当前 Epoch 开始时间。
-    uint256 curEpochEndTime;        // 当前 Epoch 结束时间。
-    int256 public maxStrikePrice;   // 当前 Epoch 售卖期权的最高的行权价格。
-    int256 public minStrikePrice;   // 当前 Epoch 售卖期权的最低的行权价格。
+    uint256 public curEpochStartTime;                       // 当前 Epoch 开始时间。
+    uint256 public curEpochEndTime;                         // 当前 Epoch 结束时间。
+    int256 public maxStrikePrice;                           // 当前 Epoch 售卖期权的最高的行权价格。
+    int256 public minStrikePrice;                           // 当前 Epoch 售卖期权的最低的行权价格。
 
     // LP investors 资金池相关变量
     // 当前资金池, 新一轮存款请求, 新一轮提款请求
-    mapping (address => int) public liquidityPool;
-    mapping (address => int) public newDepositRequest;
-    mapping (address => int) public newWithdraRequest;
+    mapping (address => int) public liquidityPool;          // 资金池 addr -> USDC 数量
+    mapping (address => int) public newDepositRequest;      // 存款请求 addr -> USDC 数量
+    mapping (address => int) public newWithdraRequest;      // 提款请求 addr -> USDC 数量
 
-    int public totalBalance;
-    int public curRoundLockedBalance = 0;
-    address[] investors;
-    address[] newDepositers;
-    address[] newWithdrawers;
+    int public totalBalance;                                // 资金池 USDC 数量
+    int public curRoundLockedBalance = 0;                   // 当前交易周期锁定 USDC 数量
+    address[] investors;                                    // 当前交易周期 LP 列表
+    address[] newDepositers;                                // 当前交易周期新存款者列表
+    address[] newWithdrawers;                               // 当前交易周期新提款者列表
 
     // traders 相关变量
     int256 traderPool = 0;
@@ -48,7 +48,7 @@ contract Optimistic {
         string status;
     }
 
-    int public immutable PRICEDEMICAL = int256(1e8);
+    int public immutable PRICEDEMICAL = int256(1e6);
     int public immutable PRICEGAP = int256(1e2);
 
     AggregatorV3Interface internal priceFeed;
@@ -99,14 +99,12 @@ contract Optimistic {
         // return price;
         return 1205 * PRICEDEMICAL;
     }
-
     function getNow() public view returns (uint) {
         return block.timestamp;
     }
 
     function createRandom(uint number) public view returns(int){
-        return int(uint(keccak256(abi.encodePacked(block.timestamp,block.difficulty,  
-        msg.sender))) % number);
+        return int(uint(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender))) % number);
     }
 
     function compareStrings(string memory a, string memory b) public view returns (bool) {
@@ -127,6 +125,7 @@ contract Optimistic {
     }
 
     function traderDeposit(int _amount) public {
+        require (traderProfitPool[msg.sender] >= 0, "no profit");
         require (_amount * PRICEDEMICAL <= traderProfitPool[msg.sender], "insufficient profit");
         traderProfitPool[msg.sender] -= _amount * PRICEDEMICAL;
     }
