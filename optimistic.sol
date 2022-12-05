@@ -156,11 +156,11 @@ contract Optimistic {
 
     function investorDeposit(int _amount) public {
         require ((epochId == curProfitEpochId + 1 && curProfitEpochId == curSettleEpochId && curSettleEpochId == curDepositEpochId) || epochId == 0, "invalid deposit time, current epoch is settling.");
-        require(_amount >= 100, "invest amount less than 100 USDC.");
+        require(_amount >= 10, "invest amount less than 100 USDC.");
         _amount = _amount * USDCDEMICAL;
-        uint256 balance = USDCProtocol.balanceOf(msg.sender);
-        require(balance >= uint(_amount), "insufficient token");
         if (transferUSDC) {
+            uint256 balance = USDCProtocol.balanceOf(msg.sender);
+            require(balance >= uint(_amount), "insufficient token");
             bool success = USDCProtocol.transferFrom(msg.sender, address(this), uint(_amount));
             require(success, "error transfer usdc");
         }
@@ -227,7 +227,7 @@ contract Optimistic {
         require (strikeTime >= curEpochStartTime && strikeTime <= curEpochEndTime, "invalid strikeTime.");
         require (strikeTime > getNow(), "invalid strikeTime.");
         require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "invalid strikePrice.");
-        require (_amount >= 50, "invalid _amount.");
+        require (_amount >= 10, "invalid _amount.");
         require (buyPrice >= MINBUYPRICE && buyPrice <= MAXBUYPRICE, "invalid buy price.");
         require (buyPrice % (10 ** 4) == 0, "invalid buy price.");
 
@@ -236,11 +236,11 @@ contract Optimistic {
         require (orderSize > 0, "orderSize smaller than 1.");
         require (totalBalance - curRoundLockedBalance >= orderSize * USDCDEMICAL, "insufficient option supply.");
 
-        // 检查用户 USDC 是否充足。
-        uint balance = USDCProtocol.balanceOf(msg.sender);
-        require (balance >= uint(_amount * USDCDEMICAL), "insufficient USDC funds");
-
         if (transferUSDC) {
+
+             // 检查用户 USDC 是否充足。
+            uint balance = USDCProtocol.balanceOf(msg.sender);
+            require (balance >= uint(_amount * USDCDEMICAL), "insufficient USDC funds");
             bool success = USDCProtocol.transferFrom(msg.sender, address(this), uint(_amount * USDCDEMICAL));
             require(success, "error transfer usdc");
         }
@@ -267,7 +267,7 @@ contract Optimistic {
     }
 
     // 计算当前 EPOCH 的期权利润。
-    function calculateTraderProfits() public isOwner {
+    function calculateTraderProfits() public {
         require (epochId == curProfitEpochId + 1);
         require (curProfitEpochId == curSettleEpochId && curProfitEpochId == curDepositEpochId);
 
@@ -307,7 +307,7 @@ contract Optimistic {
     }
 
     // 对当前 EPOCH 的 invesotrs 的利润进行结算。
-    function handleSettlement() public isOwner {
+    function handleSettlement() public {
         require (epochId == curProfitEpochId && curProfitEpochId == curSettleEpochId + 1 && curSettleEpochId == curDepositEpochId);
         int curRoundProfit = curEpochTotalProfit;
         // 根据这一轮的 Profit 计算新的 Balance 对于每个投资人。
@@ -338,7 +338,7 @@ contract Optimistic {
     }
 
     // 当前 EPOCH 结束时, 处理新的 investors 的请求。
-    function handleDepositRequest() public isOwner {
+    function handleDepositRequest() public {
         require (epochId == curProfitEpochId && curProfitEpochId == curSettleEpochId && curSettleEpochId == curDepositEpochId + 1);
         int256 newTotalBalance = totalBalance;
         for (uint i = 0; i < newDepositers.length; ++i) {
@@ -357,7 +357,7 @@ contract Optimistic {
     }
 
     // 处理第一轮的投资请求, 计算 totalBalance,
-    function handleFirstDepositProcess() private isOwner {
+    function handleFirstDepositProcess() private {
         require (epochId == 0, "this is not first deposit process");
         int startingBalance = 0;
         for (uint i = 0; i < newDepositers.length; ++i) {
@@ -373,7 +373,14 @@ contract Optimistic {
         totalBalance = startingBalance;
     }
 
-    function startNewEpoch() public isOwner {
+    function reloadNewEpoch() public {
+        calculateTraderProfits();
+        handleSettlement();
+        handleFirstDepositProcess();
+        startNewEpoch();
+    }
+
+    function startNewEpoch() public {
         require (epochId == curProfitEpochId && epochId == curSettleEpochId && epochId == curDepositEpochId, "invalid epochId.");
         uint period = 600;
         curEpochStartTime = getNow();
