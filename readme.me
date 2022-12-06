@@ -10,19 +10,47 @@ Optimistic Admin
 
 traders:
 
-1. buy 购买期权  
-    
-   样例: 1670244489,130800000000,true,1,730000,50 
+    1. 购买期权 buy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int _amount)
 
-   注意: strikeTime 的时间限制, buyPrice 模 10000 要等于 0. 
-    
-2. sell 赎回期权
-    
-   样例: 1,0,670000
+        参数说明: 
+            strikeTime: 行权时间戳
+            strikePrice: 行权价格, 真实价格 * 10^8, 必须是 10^8 的倍数
+            optionType: 期权类型, true 是 CALL, false 是 PUT
+            productEpochId: 购买期权的 epochId, 主要是为了在合约里校验当前 epochId 是否等于请求的 productEpochId, 以防出问题。
+            buyPrice: 购买的价格, 真实价格 * 10^6, 必须是 10^4 的倍数, 即真实价格最小计数单位 = 0.01
+            _amount: USDC 数量, 直接传真实值
+        
+        样例: 
+            购买 CALL 期权, 行权价格 = 1308, 当前 epochId = 1, 价格 = 0.73, 花费 = 50 USDC  
 
-         epochId, oderIndex, sellPrice
+                1670300700,130800000000,true,1,730000,50
 
-         按照 sellPrice 赎回第 epochId 伦的第 orderIndex 个期权。
+            购买 PUT 期权, 行权价格 = 1204, 当前 epochId = 1, 价格 = 0.89, 花费 = 100 USDC  
+
+                1670300800,120400000000,false,1,890000,100
+
+        注意: 
+            strikeTime 的时间限制, buyPrice 模 10000 要等于 0。
+
+    2. 赎回期权 sell(uint productEpochId, uint orderIndex, int sellPrice) 
+
+       参数说明: 
+            productEpochId: 同上, 赎回期权的 epochId, 主要是为了在合约里校验当前 epochId 是否等于请求的 productEpochId, 以防出问题。
+            orderIndex: 当前交易周期 epochId 下用户赎回第几个 orderIndex。 
+            sellPrice: 赎回的价格, 真实价格 * 10^6, 必须是 10^4 的倍数, 即真实价格最小计数单位 = 0.01
+
+       样例: 
+
+            售卖当前 epochId = 1, 第 0 个期权, 按照 0.67 USDC 的价格, 
+                1,0,670000
+             
+       注意:
+            这里只能在当前期权页面进行调用, 因为只有当前期权页面能读取到用户当前 epoch 的期权列表长度。
+
+    3. 获取历史期权 getHistoryOptions() , returns OptionOrder[] memory
+
+    4. 获取当前期权 getCurOptions() , returns OptionOrder[] memory
+
 
 lp investors
 
