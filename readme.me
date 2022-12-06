@@ -10,7 +10,7 @@ Optimistic Admin
 
 traders:
 
-    1. 购买期权 buy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int _amount)
+    1. 购买期权 traderBuy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int _amount)
 
         参数说明: 
             strikeTime: 行权时间戳
@@ -32,7 +32,7 @@ traders:
         注意: 
             strikeTime 的时间限制, buyPrice 模 10000 要等于 0。
 
-    2. 赎回期权 sell(uint productEpochId, uint orderIndex, int sellPrice) 
+    2. 赎回期权 traderSell(uint productEpochId, uint orderIndex, int sellPrice) 
 
        参数说明: 
             productEpochId: 同上, 赎回期权的 epochId, 主要是为了在合约里校验当前 epochId 是否等于请求的 productEpochId, 以防出问题。
@@ -50,6 +50,10 @@ traders:
     3. 获取历史期权 getHistoryOptions() , returns OptionOrder[] memory
 
     4. 获取当前期权 getCurOptions() , returns OptionOrder[] memory
+    
+    5. 获取 impliedVoltality, 直接调用 contract 中的 impliedVoltality, 是 public 的变量。
+    
+    6. 获取当前能提款的数量, getCurValues(), returns int;
 
 
 lp investors
