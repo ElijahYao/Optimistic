@@ -19,7 +19,7 @@ contract Optimistic {
     uint initialNumber = 0;
     bool transferUSDC = false;                              // 是否交易 USDC
 
-    uint public impliedVoltality ;
+    uint public impliedVoltality;
 
     // Epoch 相关变量
     int public curEpochTotalProfit;                         // 当前 Epoch 利润
@@ -67,7 +67,6 @@ contract Optimistic {
     int public immutable MINBUYPRICE = (5 * 10 ** 6 / 100);
     int public immutable MAXBUYPRICE = (100 * 10 ** 6 / 100);
 
-
     AggregatorV3Interface internal priceFeed;
     mapping (address => mapping (uint => OptionOrder[])) public traderOptionOrders;
     mapping (address => uint) curEpochTraderOrderLength;
@@ -83,12 +82,10 @@ contract Optimistic {
         require(msg.sender == owner, "caller is not owner");
         _;
     }
-
     modifier runningEpoch() {
         require (epochId == curProfitEpochId + 1 && curProfitEpochId == curSettleEpochId && curSettleEpochId == curDepositEpochId, "there is no epoch active.");
         _;
     }
-
     constructor() {
         owner = msg.sender;
         epochId = 0;
@@ -97,27 +94,14 @@ contract Optimistic {
         curProfitEpochId = 0;
         curDepositEpochId = 0;
         curEpochTotalProfit = 0;
-        priceFeed = AggregatorV3Interface(
-            0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e
-        );
+        priceFeed = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
         optimisticBalance = 0;
         USDCProtocol = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
         transferUSDC = false;
         impliedVoltality = 675;
     }
 
-    /**
-     * Returns the latest price
-     */
     function getLatestPrice() public view returns (int) {
-        // (
-        //     ,
-        //     /*uint80 epochId*/ int price /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/,
-        //     ,
-        //     ,
-
-        // ) = priceFeed.latestRoundData();
-        // return price;
         return 1205 * PRICEDEMICAL;
     }
 
@@ -147,20 +131,19 @@ contract Optimistic {
         return result;
     }
 
-
-    function getNow() public view returns (uint) {
+    function getNow() private view returns (uint) {
         return block.timestamp;
     }
 
-    function createRandom(uint number) public view returns(int){
+    function createRandom(uint number) private view returns(int){
         return int(uint(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender))) % number);
     }
 
-    function compareStrings(string memory a, string memory b) public view returns (bool) {
+    function compareStrings(string memory a, string memory b) private view returns (bool) {
         return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 
-    function curInvestorExist(address sender) public view returns (bool) {
+    function curInvestorExist(address sender) private view returns (bool) {
         for (uint i = 0; i < investors.length; i++) {
             if (investors[i] == sender) {
                 return true;
@@ -200,7 +183,6 @@ contract Optimistic {
             newDepositers.push(msg.sender);
         }
         newDepositRequest[msg.sender] += _amount;
-
     }
 
     function investorWithDraw(int _amount) public {
@@ -259,7 +241,6 @@ contract Optimistic {
         require (strikeTime >= curEpochStartTime && strikeTime <= curEpochEndTime, "invalid strikeTime.");
         require (strikeTime > getNow(), "invalid strikeTime.");
         require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "invalid strikePrice.");
-        require (_amount >= 10, "invalid _amount.");
         require (buyPrice >= MINBUYPRICE && buyPrice <= MAXBUYPRICE, "invalid buy price.");
         require (buyPrice % (10 ** 4) == 0, "invalid buy price.");
 
@@ -269,7 +250,6 @@ contract Optimistic {
         require (totalBalance - curRoundLockedBalance >= orderSize * USDCDEMICAL, "insufficient option supply.");
 
         if (transferUSDC) {
-
              // 检查用户 USDC 是否充足。
             uint balance = USDCProtocol.balanceOf(msg.sender);
             require (balance >= uint(_amount * USDCDEMICAL), "insufficient USDC funds");
@@ -303,10 +283,7 @@ contract Optimistic {
     function calculateTraderProfits() public {
         require (epochId == curProfitEpochId + 1);
         require (curProfitEpochId == curSettleEpochId && curProfitEpochId == curDepositEpochId);
-
         int settlePrice = (1105 + createRandom(200)) * PRICEDEMICAL;
-        console.log("epochId:", epochId, " settlePrice:", uint(settlePrice));
-
         curProfitEpochId = epochId;
         for (uint i = 0; i < curEpochTraders.length; ++i) {
             address trader = curEpochTraders[i];
@@ -314,10 +291,7 @@ contract Optimistic {
             int curTraderSettledSize = 0;
             for (uint j = 0; j < orderNum; ++j) {
                 string memory orderStatus = traderOptionOrders[trader][epochId][j].status;
-                if (compareStrings(orderStatus, "settled")) {
-                    continue;
-                }
-                if (compareStrings(orderStatus, "closed")) {
+                if (compareStrings(orderStatus, "settled") || compareStrings(orderStatus, "closed")) {
                     continue;
                 }
                 traderOptionOrders[trader][epochId][j].status = "settled";
@@ -348,16 +322,12 @@ contract Optimistic {
         int curRoundProfit = curEpochTotalProfit;
         // 根据这一轮的 Profit 计算新的 Balance 对于每个投资人。
         int newTotalBalance = 0;
-        console.log("investor length:", investors.length);
         for (uint i = 0; i < investors.length; ++i) {
             address investor = investors[i];
-            console.log("investor addr:", investor);
-            console.log("investor lp amount origin:", uint(liquidityPool[investor]));
             liquidityPool[investor] = liquidityPool[investor] + curRoundProfit * liquidityPool[investor] / totalBalance;
             if (liquidityPool[investor] < 0) {
                 liquidityPool[investor] = 0;
             }
-            console.log("investor lp amount updated:", uint(liquidityPool[investor]));
             if (newWithdraRequest[investor] > 0) {
                 if (liquidityPool[investor] >= newWithdraRequest[investor]) {
                     investorsWithdrawPool[investor] += newWithdraRequest[investor];
@@ -407,13 +377,6 @@ contract Optimistic {
         }
         newDepositers = new address[](0);
         totalBalance = startingBalance;
-    }
-
-    function reloadNewEpoch() public {
-        calculateTraderProfits();
-        handleSettlement();
-        handleDepositRequest();
-        startNewEpoch();
     }
 
     function startNewEpoch() public {
