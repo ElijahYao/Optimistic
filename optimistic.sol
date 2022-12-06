@@ -19,6 +19,8 @@ contract Optimistic {
     uint initialNumber = 0;
     bool transferUSDC = false;                              // 是否交易 USDC
 
+    uint public impliedVoltality ;
+
     // Epoch 相关变量
     int public curEpochTotalProfit;                         // 当前 Epoch 利润
 
@@ -34,7 +36,7 @@ contract Optimistic {
     // LP investors 资金池相关变量
     // 当前资金池, 新一轮存款请求, 新一轮提款请求
     mapping (address => int) public liquidityPool;          // 资金池 addr -> USDC 数量
-    mapping (address => int) public investorsWithdrawPool;           // 提款池 addr -> USDC 数量
+    mapping (address => int) public investorsWithdrawPool;  // 提款池 addr -> USDC 数量
     mapping (address => int) public newDepositRequest;      // 存款请求 addr -> USDC 数量
     mapping (address => int) public newWithdraRequest;      // 提款请求 addr -> USDC 数量
 
@@ -54,6 +56,7 @@ contract Optimistic {
         Option option;
         int orderSize;
         string status;
+        int buyPrice;
     }
     int public immutable PRICEDEMICAL = 10 ** 8;
     int public immutable USDCDEMICAL = 10 ** 6;
@@ -100,6 +103,7 @@ contract Optimistic {
         optimisticBalance = 0;
         USDCProtocol = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
         transferUSDC = false;
+        impliedVoltality = 675;
     }
 
     /**
@@ -116,6 +120,34 @@ contract Optimistic {
         // return price;
         return 1205 * PRICEDEMICAL;
     }
+
+    function getHistoryOptions() public view returns (OptionOrder[] memory) {
+        uint historyLength = 0;
+        for (uint k = 0; k < epochId; ++k) {
+            historyLength += traderOptionOrders[msg.sender][k].length;
+        }
+        OptionOrder[] memory result = new OptionOrder[](historyLength);
+        uint i = 0;
+        for (uint k = 0; k < epochId; ++k) {
+            for (uint j = 0 ; j < traderOptionOrders[msg.sender][k].length; ++j) {
+                result[i++] = traderOptionOrders[msg.sender][k][j];
+            }
+        }
+        return result;
+    }
+
+    function getCurOptions() public view returns  (OptionOrder[] memory) {
+        uint curLength = traderOptionOrders[msg.sender][epochId].length;
+        OptionOrder[] memory result = new OptionOrder[](curLength);
+
+        uint i = 0;
+        for (uint j = 0 ; j < traderOptionOrders[msg.sender][epochId].length; ++j) {
+            result[i++] = traderOptionOrders[msg.sender][epochId][j];
+        }
+        return result;
+    }
+
+
     function getNow() public view returns (uint) {
         return block.timestamp;
     }
@@ -257,6 +289,7 @@ contract Optimistic {
         optionOrder.option = option;
         optionOrder.orderSize = orderSize;
         optionOrder.status = "opened";
+        optionOrder.buyPrice = buyPrice;
 
         traderOptionOrders[msg.sender][epochId].push(optionOrder);
         if (curEpochTraderOrderLength[msg.sender] == 0) {
@@ -282,6 +315,9 @@ contract Optimistic {
             for (uint j = 0; j < orderNum; ++j) {
                 string memory orderStatus = traderOptionOrders[trader][epochId][j].status;
                 if (compareStrings(orderStatus, "settled")) {
+                    continue;
+                }
+                if (compareStrings(orderStatus, "closed")) {
                     continue;
                 }
                 traderOptionOrders[trader][epochId][j].status = "settled";
@@ -376,7 +412,7 @@ contract Optimistic {
     function reloadNewEpoch() public {
         calculateTraderProfits();
         handleSettlement();
-        handleFirstDepositProcess();
+        handleDepositRequest();
         startNewEpoch();
     }
 
