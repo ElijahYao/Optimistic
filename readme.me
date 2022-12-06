@@ -2,9 +2,17 @@ v3 部署地址:
     部署网络: Georli 测试网络
     Optimistic: 0xbd9D22C75bf309A6AbF1B6a4080DF8e686d6Fc8b
     USDCToken: 0x07865c6E87B9F70255377e024ace6630C1Eaa37F
+    Oracle: 0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e
+
+
+v4 部署地址:
+
+    部署网络: Arbitrum 测试网络
+    Optimistic: 
+    USDCToken: 
+    Oracle: 0x62CAe0FA2da220f43a51F86Db2EDb36DcA9A5A08
 
 traders:
-
     1. 购买期权 traderBuy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int _amount)
 
         参数说明: 
@@ -16,12 +24,10 @@ traders:
             _amount: USDC 数量, 直接传真实值
         
         样例: 
-            购买 CALL 期权, 行权价格 = 1308, 当前 epochId = 1, 价格 = 0.73, 花费 = 50 USDC  
-
+            购买 CALL 期权, 行权价格 = 1308, 当前 epochId = 1, 价格 = 0.73, 花费 = 50 USDC
                 1670300700,130800000000,true,1,730000,50
 
             购买 PUT 期权, 行权价格 = 1204, 当前 epochId = 1, 价格 = 0.89, 花费 = 100 USDC  
-
                 1670300800,120400000000,false,1,890000,100
 
         注意: 
@@ -43,68 +49,23 @@ traders:
             这里只能在当前期权页面进行调用, 因为只有当前期权页面能读取到用户当前 epoch 的期权列表长度。
 
     3. 获取历史期权 getHistoryOptions() , returns OptionOrder[] memory
-
     4. 获取当前期权 getCurOptions() , returns OptionOrder[] memory
-    
-    5. 获取 impliedVoltality, 直接调用 contract 中的 impliedVoltality, 是 public 的变量。
-    
-    6. 获取当前能提款的数量, getCurValues(), returns int;
+    5. 获取 impliedVoltality, 直接调用 contract 中的 impliedVoltality, 是 public 的变量
+    6. 获取当前能提款的数量, getCurValues(), returns int
+    7. 用户提款 traderWithdraw(int _amount), _amount = USDC 数量, 例如 1000。
 
+LP investors
 
-lp investors
+    用户 API: 
 
-1. withdraw，提交提款请求，investorWithDraw, _amount = UDSC 数量, 例如 1000 
-2. deposit, 提交存款请求，investorDeposit, _amount = UDSC 数量, 例如 1000 
-3. 真正的提款，从合约里面把钱提出来，investorActualWithDraw,   _amount = UDSC 数量, 例如 1000 
+        1. 提交提款请求 investorWithDraw(int _amount), _amount = UDSC 数量, 例如 1000。 
+        2. 提交存款请求 investorDeposit(int _amount),  _amount = UDSC 数量, 例如 1000。
+        3. 投资人提款，从合约里面把钱提出来, investorActualWithDraw(int amount), _amount = UDSC 数量, 例如 1000。
 
+    展示数据获取: 
 
-Section1 交易者首页: 
-
-展示的数据:
-
-    1. 获取当前交易周期 ID: epochId
-    2. 当前交易周期周期价格区间: [minStrikePrice, maxStrikePrice], uint / 10^8 = 真实的 USDC 价格
-    3. 当前交易周期结算时间区间: [curEpochStartTime, curEpochEndTime].
-    4. K 线图, 看下能不能复用简易期权 ETH 的 K 线。
-    5. 当前 wallet 的 USDC 数量。
-    6. 当前 wallet 已实现利润, 待提取: 调用 contract 中 traderProfitPool[msg.sender]。
-
-用户交互: 
-
-    1. 购买期权调用 buy 方法:
-
-        function buy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int _amount).
-
-        strikeTime: 结束时间, 暂时直接传当前的 curEpochEndTime。
-        strikePrice: 做一个滑动窗口，用户可以在 [minStrikePrice, maxStrikePrice] 随便选，必须是整数。
-        optionType, CALL 是 true, PUT 是 false 
-        produtepochId: 当前的 epochId, 前端存一个 epochId, 定期刷一下。
-        buyPrice: 购买期权的价格, 前端随机一个 5 - 100 的整数 * 10^4 就行, 这个计算公式后续会提供给前端, 需要读一个链上数据。
-        _amount: 使用的 USDC 数量。
-
-
-Section2 LP投资人界面: 
-
-展示的数据:
-
-    1. 获取当前交易周期 ID: epochId
-    2. 交易周期结算时间: curEpochEndTime
-    3. invest History 
-
-用户交互
-
-    1. 展示当前的总资金池大小. 
-    2. 展示当前用户投资的资金大小。
-    3. withdraw 提款, 调用 investorWithDraw 。
-    4. deposit 提款, 调用 investorDeposit。
-    5. 在 withdraw 和 deposit 可以通过滑动计算投资后份额是多少。
-    
-
-Section3 历史仓位。
-    
-    1. TODO 需要提供个 API
-    
-
-Section4 当前持仓。
-
-    1. traderOptionOrders[msg.sender][epochId]
+        1. 总资金池大小: 合约中 public 的 totalBalance。
+        2. 当前用户投资的资金大小: liquidityPool[msg.sender]。
+        3. 投资人当前能提款的数量: investorsWithdrawPool[msg.sender]。
+        4. 当前 epochId, 同上 trader 部分
+        5. 当前 epoch 结束时间, 同上 trader 部分。
