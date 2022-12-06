@@ -17,12 +17,12 @@ contract Optimistic {
     address public owner;
     uint public epochId;
     uint public lastSettledEpochId;                         // 上一轮完成结算的 EpochId. 
-
-    uint initialNumber = 0;
     bool transferUSDC = false;                              // 是否交易 USDC
 
-    uint public impliedVoltality;
-    uint public period = 600;
+    uint public impliedVoltality;                           // 隐含波动率
+    uint public period = 600;                               // 一个 Epoch 交易时长
+
+    uint initialNumber = 0;                                 // 无关变量
 
     // Epoch 相关变量
     int public curEpochTotalProfit;                         // 当前 Epoch 利润
@@ -106,6 +106,10 @@ contract Optimistic {
     function getCurOptions() public view returns (OptionOrder[] memory) {
         return traderCurEpochOptionOrders[msg.sender]; 
     }
+
+    function getCurValues() public view returns (int) {
+        return traderProfitPool[msg.sender];
+    } 
 
     function getNow() private view returns (uint) {
         return block.timestamp;
