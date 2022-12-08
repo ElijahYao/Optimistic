@@ -331,7 +331,6 @@ contract Optimistic {
             if (curInvestorExist(newDepositers[i]) == false) {
                 investors.push(newDepositers[i]);
             }
-            totalBalance += liquidityPool[newDepositers[i]];
             delete newDepositRequest[newDepositers[i]];
         }
         newDepositers = new address[](0);
