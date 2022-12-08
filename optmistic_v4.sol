@@ -58,6 +58,7 @@ contract Optimistic {
         int orderSize;
         string status;
         int buyPrice;
+        uint epochId;
     }
     int public immutable PRICEDEMICAL = 10 ** 8;
     int public immutable USDCDEMICAL = 10 ** 6;
@@ -218,17 +219,19 @@ contract Optimistic {
         require (buyPrice % (10 ** 4) == 0, "invalid buy price.");
 
         // 检查 orderSize & 是否支持当前的购买
-        int orderSize = (_amount * USDCDEMICAL) / buyPrice; 
+        int orderSize = (_amount * USDCDEMICAL) / buyPrice;
+        int cost = buyPrice * orderSize;
+
         require (orderSize > 0, "orderSize smaller than 1.");
         require (totalBalance - curEpochLockedBalance >= orderSize * USDCDEMICAL, "insufficient option supply.");
 
         uint balance = USDCProtocol.balanceOf(msg.sender);
-        require (int(balance) + traderProfitPool[msg.sender] >= _amount * USDCDEMICAL, "insufficient balance.");
+        require (int(balance) + traderProfitPool[msg.sender] >= cost, "insufficient balance.");
 
-        if (traderProfitPool[msg.sender] >= _amount * USDCDEMICAL) {
-            traderProfitPool[msg.sender] -= _amount * USDCDEMICAL;
+        if (traderProfitPool[msg.sender] >= cost) {
+            traderProfitPool[msg.sender] -= cost;
         } else {
-            bool success = USDCProtocol.transferFrom(msg.sender, address(this), uint(_amount * USDCDEMICAL - traderProfitPool[msg.sender]));
+            bool success = USDCProtocol.transferFrom(msg.sender, address(this), uint(cost - traderProfitPool[msg.sender]));
             traderProfitPool[msg.sender] = 0;
             require(success, "error transfer usdc");
         }
@@ -246,12 +249,13 @@ contract Optimistic {
         optionOrder.orderSize = orderSize;
         optionOrder.status = "opened";
         optionOrder.buyPrice = buyPrice;
+        optionOrder.epochId = epochId;
 
         if (traderCurEpochOptionOrders[msg.sender].length == 0) {
             curEpochTraders.push(msg.sender);
         }
         traderCurEpochOptionOrders[msg.sender].push(optionOrder);
-        curEpochTotalProfit += _amount * USDCDEMICAL;
+        curEpochTotalProfit += cost;
     }
 
     // 计算当前 EPOCH 的期权利润。
