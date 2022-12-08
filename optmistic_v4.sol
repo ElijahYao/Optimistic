@@ -59,6 +59,7 @@ contract Optimistic {
         string status;
         int buyPrice;
         uint epochId;
+        int sellPrice;
     }
     int public immutable PRICEDEMICAL = 10 ** 8;
     int public immutable USDCDEMICAL = 10 ** 6;
@@ -202,6 +203,7 @@ contract Optimistic {
 
         traderProfitPool[msg.sender] += orderSize * sellPrice;
         traderCurEpochOptionOrders[msg.sender][orderIndex].status = "closed";
+        traderCurEpochOptionOrders[msg.sender][orderIndex].sellPrice = sellPrice;
 
         OptionOrder memory optionOrder = traderCurEpochOptionOrders[msg.sender][orderIndex];
         traderHistoryOptionOrders[msg.sender].push(optionOrder);
