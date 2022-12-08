@@ -228,11 +228,14 @@ contract Optimistic {
         require (orderSize > 0, "orderSize smaller than 1.");
         require (totalBalance - curEpochLockedBalance >= orderSize * USDCDEMICAL, "insufficient option supply.");
 
-        if (transferUSDC) {
-             // 检查用户 USDC 是否充足。
-            uint balance = USDCProtocol.balanceOf(msg.sender);
-            require (balance >= uint(_amount * USDCDEMICAL), "insufficient USDC funds");
-            bool success = USDCProtocol.transferFrom(msg.sender, address(this), uint(_amount * USDCDEMICAL));
+        uint balance = USDCProtocol.balanceOf(msg.sender);
+        require (int(balance) + traderProfitPool[msg.sender] >= _amount * USDCDEMICAL, "insufficient balance.");
+
+        if (traderProfitPool[msg.sender] >= _amount * USDCDEMICAL) {
+            traderProfitPool[msg.sender] -= _amount * USDCDEMICAL;
+        } else {
+            bool success = USDCProtocol.transferFrom(msg.sender, address(this), uint(_amount * USDCDEMICAL - traderProfitPool[msg.sender]));
+            traderProfitPool[msg.sender] = 0;
             require(success, "error transfer usdc");
         }
 
