@@ -20,7 +20,7 @@ contract Optimistic {
     bool transferUSDC = false;                              // 是否交易 USDC
 
     uint public impliedVoltality;                           // 隐含波动率
-    uint public period = 43200;                               // 一个 Epoch 交易时长
+    uint public period = 43200;                             // 一个 Epoch 交易时长
 
     uint initialNumber = 0;                                 // 无关变量
 
@@ -31,6 +31,7 @@ contract Optimistic {
     uint256 public curEpochEndTime;                         // 当前 Epoch 结束时间。
     int256 public maxStrikePrice;                           // 当前 Epoch 售卖期权的最高的行权价格。
     int256 public minStrikePrice;                           // 当前 Epoch 售卖期权的最低的行权价格。
+    mapping (uint => int) public settlePriceRecords;
 
     // LP investors 资金池相关变量
     // 当前资金池, 新一轮存款请求, 新一轮提款请求
@@ -38,6 +39,7 @@ contract Optimistic {
     mapping (address => int) public investorsWithdrawPool;  // 提款池 addr -> USDC 数量
     mapping (address => int) public newDepositRequest;      // 存款请求 addr -> USDC 数量
     mapping (address => int) public newWithdrawRequest;     // 提款请求 addr -> USDC 数量
+    
 
     int public totalBalance;                                // 资金池 USDC 数量
     int public curEpochLockedBalance = 0;                   // 当前交易周期锁定 USDC 数量
@@ -96,7 +98,13 @@ contract Optimistic {
     }
 
     function getLatestPrice() public view returns (int) {
-        return 1205 * PRICEDEMICAL;
+        (
+            ,
+            /*uint80 roundID*/ int price /*uint startedAt*/ /*uint timeStamp*/ /*uint80 answeredInRound*/,
+            ,
+            ,
+        ) = priceFeed.latestRoundData();
+        return price;
     }
 
     function getHistoryOptions() public view returns (OptionOrder[] memory) {
@@ -172,16 +180,6 @@ contract Optimistic {
         newWithdrawRequest[msg.sender] += _amount;
     }
 
-    // function investorActualWithDrawAll() public {
-    //     require (investorsWithdrawPool[msg.sender] > 0, "insufficient funds");
-    //     int amount = investorsWithdrawPool[msg.sender];
-    //     if (transferUSDC) {
-    //         bool success = USDCProtocol.transfer(msg.sender, uint(amount));
-    //         require (success, "error transfer usdc");
-    //     }
-    //     delete investorsWithdrawPool[msg.sender];
-    // }
-
     function investorActualWithDraw(int amount) public {
         require (investorsWithdrawPool[msg.sender] >= amount * USDCDEMICAL, "insufficient funds");
         if (transferUSDC) {
@@ -189,10 +187,6 @@ contract Optimistic {
             require (success, "error transfer usdc");
         }
         investorsWithdrawPool[msg.sender] -= amount * USDCDEMICAL;
-    }
-
-    function getOptionPrice() public view returns (int) {
-        return (createRandom(96) + 5) * USDCDEMICAL / 100;
     }
 
     function traderSell(uint productEpochId, uint orderIndex, int sellPrice) public {
@@ -264,6 +258,7 @@ contract Optimistic {
     function calculateTraderProfits() public {
         require (epochId == lastSettledEpochId + 1);
         int settlePrice = (1105 + createRandom(200)) * PRICEDEMICAL;
+        settlePriceRecords[epochId] = settlePrice;
         for (uint i = 0; i < curEpochTraders.length; ++i) {
             address trader = curEpochTraders[i];
             int curTraderSettledSize = 0;
