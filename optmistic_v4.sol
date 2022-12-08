@@ -69,7 +69,7 @@ contract Optimistic {
     AggregatorV3Interface internal priceFeed;
     mapping (address => OptionOrder[]) public traderCurEpochOptionOrders;       // 当前 Epoch 交易者的 OptionOrders
     mapping (address => OptionOrder[]) public traderHistoryOptionOrders;        // 历史交易者的 OptionOrders
-    mapping (address => int) traderProfitPool;
+    mapping (address => int) public traderProfitPool;
     
     address[] curEpochTraders;
 
