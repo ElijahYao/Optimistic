@@ -60,6 +60,7 @@ contract Optimistic {
         int buyPrice;
         uint epochId;
         int sellPrice;
+        int settlePrice;
     }
     int public immutable PRICEDEMICAL = 10 ** 8;
     int public immutable USDCDEMICAL = 10 ** 6;
@@ -274,18 +275,21 @@ contract Optimistic {
                     continue;
                 }
                 traderCurEpochOptionOrders[trader][j].status = "settled";
+                traderCurEpochOptionOrders[trader][j].settlePrice = settlePrice;
                 int orderSize = traderCurEpochOptionOrders[trader][j].orderSize;
                 // Settle CALL
                 if (traderCurEpochOptionOrders[trader][j].option.optionType == true) {
                     if (settlePrice >= traderCurEpochOptionOrders[trader][j].option.strikePrice) {
                         curEpochTotalProfit -= orderSize * USDCDEMICAL;
                         curTraderSettledSize += orderSize;
+                        traderCurEpochOptionOrders[trader][j].sellPrice = 1;
                     }
                 // Settle PUT
                 } else {
                     if (settlePrice <= traderCurEpochOptionOrders[trader][j].option.strikePrice) {
                         curEpochTotalProfit -= orderSize * USDCDEMICAL;
                         curTraderSettledSize += orderSize;
+                        traderCurEpochOptionOrders[trader][j].sellPrice = 1;
                     }
                 }
                 OptionOrder memory optionOrder = traderCurEpochOptionOrders[trader][j];
