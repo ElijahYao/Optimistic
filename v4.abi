@@ -1,89 +1,6 @@
 [
 	{
 		"inputs": [],
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
-		"inputs": [],
-		"name": "MAXOPTIONPRICE",
-		"outputs": [
-			{
-				"internalType": "int256",
-				"name": "",
-				"type": "int256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "MINOPTIONPRICE",
-		"outputs": [
-			{
-				"internalType": "int256",
-				"name": "",
-				"type": "int256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "PRICEDEMICAL",
-		"outputs": [
-			{
-				"internalType": "int256",
-				"name": "",
-				"type": "int256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "PRICEGAP",
-		"outputs": [
-			{
-				"internalType": "int256",
-				"name": "",
-				"type": "int256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "USDCDEMICAL",
-		"outputs": [
-			{
-				"internalType": "int256",
-				"name": "",
-				"type": "int256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "USDCProtocol",
-		"outputs": [
-			{
-				"internalType": "contract USDC",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
 		"name": "adminReloadNewEpoch",
 		"outputs": [],
 		"stateMutability": "nonpayable",
@@ -102,6 +19,137 @@
 		"outputs": [],
 		"stateMutability": "nonpayable",
 		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "int256",
+				"name": "amount",
+				"type": "int256"
+			}
+		],
+		"name": "investorActualWithDraw",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "int256",
+				"name": "_amount",
+				"type": "int256"
+			}
+		],
+		"name": "investorDeposit",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "int256",
+				"name": "_amount",
+				"type": "int256"
+			}
+		],
+		"name": "investorWithDraw",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "int256",
+				"name": "_amount",
+				"type": "int256"
+			}
+		],
+		"name": "optimisticWithDraw",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "strikeTime",
+				"type": "uint256"
+			},
+			{
+				"internalType": "int256",
+				"name": "strikePrice",
+				"type": "int256"
+			},
+			{
+				"internalType": "bool",
+				"name": "optionType",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint256",
+				"name": "productEpochId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "int256",
+				"name": "buyPrice",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "_amount",
+				"type": "int256"
+			}
+		],
+		"name": "traderBuy",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "productEpochId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "orderIndex",
+				"type": "uint256"
+			},
+			{
+				"internalType": "int256",
+				"name": "sellPrice",
+				"type": "int256"
+			}
+		],
+		"name": "traderSell",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "int256",
+				"name": "_amount",
+				"type": "int256"
+			}
+		],
+		"name": "traderWithdraw",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
 	},
 	{
 		"inputs": [],
@@ -334,45 +382,6 @@
 	{
 		"inputs": [
 			{
-				"internalType": "int256",
-				"name": "amount",
-				"type": "int256"
-			}
-		],
-		"name": "investorActualWithDraw",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "int256",
-				"name": "_amount",
-				"type": "int256"
-			}
-		],
-		"name": "investorDeposit",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "int256",
-				"name": "_amount",
-				"type": "int256"
-			}
-		],
-		"name": "investorWithDraw",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
 				"internalType": "address",
 				"name": "",
 				"type": "address"
@@ -423,7 +432,33 @@
 	},
 	{
 		"inputs": [],
+		"name": "MAXOPTIONPRICE",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
 		"name": "maxStrikePrice",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "MINOPTIONPRICE",
 		"outputs": [
 			{
 				"internalType": "int256",
@@ -499,19 +534,6 @@
 		"type": "function"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "int256",
-				"name": "_amount",
-				"type": "int256"
-			}
-		],
-		"name": "optimisticWithDraw",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
 		"inputs": [],
 		"name": "owner",
 		"outputs": [
@@ -532,6 +554,32 @@
 				"internalType": "uint256",
 				"name": "",
 				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "PRICEDEMICAL",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "PRICEGAP",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
 			}
 		],
 		"stateMutability": "view",
@@ -567,44 +615,6 @@
 			}
 		],
 		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "strikeTime",
-				"type": "uint256"
-			},
-			{
-				"internalType": "int256",
-				"name": "strikePrice",
-				"type": "int256"
-			},
-			{
-				"internalType": "bool",
-				"name": "optionType",
-				"type": "bool"
-			},
-			{
-				"internalType": "uint256",
-				"name": "productEpochId",
-				"type": "uint256"
-			},
-			{
-				"internalType": "int256",
-				"name": "buyPrice",
-				"type": "int256"
-			},
-			{
-				"internalType": "int256",
-				"name": "_amount",
-				"type": "int256"
-			}
-		],
-		"name": "traderBuy",
-		"outputs": [],
-		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -759,39 +769,29 @@
 		"type": "function"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "productEpochId",
-				"type": "uint256"
-			},
-			{
-				"internalType": "uint256",
-				"name": "orderIndex",
-				"type": "uint256"
-			},
+		"inputs": [],
+		"name": "USDCDEMICAL",
+		"outputs": [
 			{
 				"internalType": "int256",
-				"name": "sellPrice",
+				"name": "",
 				"type": "int256"
 			}
 		],
-		"name": "traderSell",
-		"outputs": [],
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
-		"inputs": [
+		"inputs": [],
+		"name": "USDCProtocol",
+		"outputs": [
 			{
-				"internalType": "int256",
-				"name": "_amount",
-				"type": "int256"
+				"internalType": "contract USDC",
+				"name": "",
+				"type": "address"
 			}
 		],
-		"name": "traderWithdraw",
-		"outputs": [],
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	}
 ]
