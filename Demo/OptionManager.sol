@@ -20,9 +20,14 @@ contract OptionManager is IOptionManager{
         return traderProfitPool[trader];
     }
 
+    function resetCurEpochProfit() external {
+        curEpochTotalProfit = 0;
+    }
+
     function traderWithdraw(address trader, int withdrawAmount) external {
         traderProfitPool[trader] -= withdrawAmount;
     }
+
 
     function addOption(uint strikeTime, int strikePrice, bool optionType, uint epochId, int buyPrice, int orderSize, address trader) external override returns (bool) {
 

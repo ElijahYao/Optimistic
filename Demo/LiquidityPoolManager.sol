@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
+import "hardhat/console.sol";
 
 contract LiquidityPoolManager{
 
@@ -68,9 +69,11 @@ contract LiquidityPoolManager{
         depositProcess();
     }
 
-    function settlementProcess(int liquidityPoolProfit) external returns (int) {
+    function settlementProcess(int liquidityPoolProfit) external {
         int curEpochTotalProfit = liquidityPoolProfit;
         int lastTotalBalance = totalBalance; 
+        totalBalance = 0;
+        console.log(uint(curEpochTotalProfit));
         for (uint i = 0; i < investors.length; ++i) {
             address investor = investors[i];
             if (liquidityPool[investor] == 0) {

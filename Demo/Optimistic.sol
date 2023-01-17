@@ -30,8 +30,9 @@ contract Optimistic  {
 
     constructor() {
         transferUSDC = false; 
+        USDCProtocol = USDC(0xd9145CCE52D386f254917e481eB44e9943F39138);
         optionManager = OptionManager(0xd9145CCE52D386f254917e481eB44e9943F39138);
-        liquidityPoolManager = LiquidityPoolManager(0xd9145CCE52D386f254917e481eB44e9943F39138);
+        liquidityPoolManager = LiquidityPoolManager(0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8);
     }
 
     // trader 购买期权。
@@ -83,9 +84,10 @@ contract Optimistic  {
 
     // admin 重新开始一个新的 epoch。
     function adminStartNewEpoch(int settlePrice, int _maxStrikePrice, int _minStrikePrice, uint256 _curEpochEndTime) public {
-        // 第一次
+        // 第一个 epoch
         if (epochId != 0) {
             int curEpochLiquidityPoolProfit = optionManager.calculateTraderProfit(settlePrice, epochId);
+            optionManager.resetCurEpochProfit();
             liquidityPoolManager.settlementProcess(curEpochLiquidityPoolProfit);
         } else {
             liquidityPoolManager.firstDepositProcess();
