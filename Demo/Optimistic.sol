@@ -2,122 +2,108 @@
 pragma solidity >=0.7.0 <0.9.0;
 import "hardhat/console.sol";
 import "contracts/OptionManager.sol";
+import "contracts/LiquidityPoolManager.sol";
+
+interface USDC {
+    function balanceOf(address account) external view returns (uint256);
+    function allowance(address owner, address spender) external view returns (uint256);
+    function transfer(address recipient, uint256 amount) external returns (bool);
+    function approve(address spender, uint256 amount) external returns (bool);
+    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
+}
 
 contract Optimistic  {
 
+    USDC public USDCProtocol;
     OptionManager public immutable optionManager;
-    LiquidityPoolManager public immutable LiquidityPoolManager;
+    LiquidityPoolManager public immutable liquidityPoolManager;
 
+    address public owner;
     bool transferUSDC;
-    uint epochId;                                                       // 当前 epoch 轮数
+    uint epochId;                                                       // 当前轮数
 
     int public curEpochLockedBalance = 0;                               // 当前交易周期锁定 USDC 数量   
+    int public optimisticBalance;                                       // 平台方收益
+    uint256 public curEpochEndTime;                                     // 当前 Epoch 结束时间。
+    int256 public maxStrikePrice;                                       // 当前 Epoch 售卖期权的最高的行权价格。
+    int256 public minStrikePrice;                                       // 当前 Epoch 售卖期权的最低的行权价格。
 
     constructor() {
         transferUSDC = false; 
+        USDCProtocol = USDC(0xd9145CCE52D386f254917e481eB44e9943F39138);
         optionManager = OptionManager(0xd9145CCE52D386f254917e481eB44e9943F39138);
+        liquidityPoolManager = LiquidityPoolManager(0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8);
     }
 
-    function getNow() public view returns (uint) {
-        return block.timestamp;
-    }
-
-    function verifyPrice() private view returns (bool) {
-        return true;
-    }
-
-    
-    // trader 相关操作
-    function traderBuy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int _amount) public returns (bool) {
-        bool addSuccess = optionManager.addOption(strikeTime, strikePrice, optionType, productEpochId, buyPrice, _amount, msg.sender);
+    // trader 购买期权。
+    function traderBuy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int orderSize) public returns (bool) {
+        if (transferUSDC) {
+            bool success = USDCProtocol.transfer(msg.sender, uint(buyPrice * orderSize));
+            require(success, "error transfer usdc.");
+        }
+        bool addSuccess = optionManager.addOption(strikeTime, strikePrice, optionType, productEpochId, buyPrice, orderSize, msg.sender);
         return addSuccess;
     }
 
-    function traderSell() public returns (bool) {
-
-    }
-
-    function traderWithdraw(int _amount) public {
-        require (traderProfitPool[msg.sender] >= 0, "no profit.");
-        require (_amount * USDCDEMICAL <= traderProfitPool[msg.sender], "insufficient profit.");
+    // trader 取钱, withdrawAmount = 真实取款 USDC 数量 * 10^6。
+    function traderWithdraw(int withdrawAmount) public {
+        int traderProfit = optionManager.getTraderProfit(msg.sender);
+        require (traderProfit >= withdrawAmount, "insufficient profit.");
         if (transferUSDC) {
-            bool success = USDCProtocol.transfer(msg.sender, uint(_amount * USDCDEMICAL));
+            bool success = USDCProtocol.transfer(msg.sender, uint(withdrawAmount));
             require(success, "error transfer usdc.");
         }
-        traderProfitPool[msg.sender] -= _amount * USDCDEMICAL;
+        optionManager.traderWithdraw(msg.sender, withdrawAmount);
     }
 
-    // lp investor 相关操作
-
-    function investorDeposit(int _amount) public {
-
-    }
-
-    function investorWithDraw(int _amount) public {
-        require (curInvestorExist(msg.sender), "invalid investor.");
-        _amount = _amount * USDCDEMICAL;
-        if (newWithdrawRequest[msg.sender] == 0) {
-            newWithdrawers.push(msg.sender);
-        }
-        newWithdrawRequest[msg.sender] += _amount;
-    }
-
-    function investorActualWithDraw(int amount) public {
-        require (investorsWithdrawPool[msg.sender] >= amount * USDCDEMICAL, "insufficient funds");
+    // lp investor 相关操作。
+    // investor 存款。
+    function investorDeposit(int investAmount) public {
         if (transferUSDC) {
-            bool success = USDCProtocol.transfer(msg.sender, uint(amount * USDCDEMICAL));
+            bool success = USDCProtocol.transferFrom(msg.sender, address(this), uint(investAmount));
+            require(success, "error transfer usdc");
+        }
+        liquidityPoolManager.investorDeposit(msg.sender, investAmount);
+    }
+
+    // investor 提款请求。
+    function investorWithDraw(int withdrawAmount) public {
+        liquidityPoolManager.investorWithdrawRequest(msg.sender, withdrawAmount);
+    }
+
+    // investor 实际提款。
+    function investorActualWithDraw(int withdrawAmount) public {
+        int withdrawPoolAmount = liquidityPoolManager.getWithdrawAmount(msg.sender);
+        require (withdrawPoolAmount >= withdrawAmount, "insufficient balance.");
+        if (transferUSDC) {
+            bool success = USDCProtocol.transfer(msg.sender, uint(withdrawAmount));
             require (success, "error transfer usdc");
         }
-        investorsWithdrawPool[msg.sender] -= amount * USDCDEMICAL;
+        liquidityPoolManager.investorActualWithdraw(msg.sender, withdrawAmount);
     }
 
-
-    // admin 相关操作
-    function settleCurrentEpoch(int settlePrice) public returns (bool) {
-
-        int curEpochLiquidityPoolProfit = OptionManager.calculateTraderProfit(settlePrice, epochId);
-        int x = LiquidityPoolManager.settlementProcess(curEpochLiquidityPoolProfit);
-        totalBalance = LiquidityPoolManager.depositProcess();
-
-        return true;
-    }
-
-    function startNewEpoch() public returns (bool) {
-        return true;
-    }
-
-    
-
-    // 重新开始一个新的 Epoch, 包含 3 个 step.
-    function adminReloadNewEpoch(int settlePrice) public {
+    // admin 重新开始一个新的 epoch。
+    function adminStartNewEpoch(int settlePrice, int _maxStrikePrice, int _minStrikePrice, uint256 _curEpochEndTime) public {
+        // 第一个 epoch
         if (epochId != 0) {
-            calculateTraderProfits(settlePrice);
-            handleSettlement();
-            handleDepositRequest();
-            lastSettledEpochId += 1;
+            int curEpochLiquidityPoolProfit = optionManager.calculateTraderProfit(settlePrice, epochId);
+            optionManager.resetCurEpochProfit();
+            liquidityPoolManager.settlementProcess(curEpochLiquidityPoolProfit);
+        } else {
+            liquidityPoolManager.firstDepositProcess();
         }
-        adminStartNewEpoch(settlePrice);
-    }
-
-    // 开始第一个 Epoch
-    function adminStartNewEpoch(int settlePrice) private {
-        require (epochId == lastSettledEpochId, "invalid epochId.");
-        curEpochStartTime = getNow();
-        curEpochEndTime = curEpochStartTime + period;
-        maxStrikePrice = 130 * settlePrice / 100;
-        minStrikePrice = 70 * settlePrice / 100;
-        if (epochId == 0) {
-            handleFirstDepositProcess();
-        }
-        // 获取预言机的价格, 制定期权产品。
+        curEpochEndTime = _curEpochEndTime;
+        maxStrikePrice = _maxStrikePrice;
+        minStrikePrice = _minStrikePrice;
         epochId += 1;
-        curEpochTotalProfit = 0;
+        curEpochLockedBalance = 0;
     }
 
-    function optimisticWithDraw(int _amount) public isOwner {
-        require (_amount * USDCDEMICAL <= optimisticBalance);
-        bool success = USDCProtocol.transferFrom(address(this), owner, uint(_amount * USDCDEMICAL));
+    // admin 提款。
+    function adminWithDraw(int withdrawAmount) public {
+        require (withdrawAmount <= optimisticBalance);
+        bool success = USDCProtocol.transferFrom(address(this), owner, uint(withdrawAmount));
         require (success, "error transfer usdc.");
-        optimisticBalance -= _amount * USDCDEMICAL;
+        optimisticBalance -= withdrawAmount;
     }
 }
