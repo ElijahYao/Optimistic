@@ -9,14 +9,22 @@ contract OptionManager is IOptionManager{
     mapping (address => OptionOrder[]) public traderHistoryOptionOrders;
     mapping (uint => int) public settlePriceRecords;
     mapping (address => int) public traderProfitPool;
+    
     address[] public curEpochTraders;
 
     // 当前 Epoch Options 售卖获得的利润
-
     int public immutable USDCDEMICAL = 10 ** 6;
-    int public curEpochTotalProfit;                         
+    int public curEpochTotalProfit;
 
-    function addOption(uint strikeTime, int strikePrice, bool optionType, uint epochId, int buyPrice, int orderSize, address buyer) external override returns (bool) {
+    function getTraderProfit(address trader) external view returns (int) {
+        return traderProfitPool[trader];
+    }
+
+    function traderWithdraw(address trader, int withdrawAmount) external {
+        traderProfitPool[trader] -= withdrawAmount;
+    }
+
+    function addOption(uint strikeTime, int strikePrice, bool optionType, uint epochId, int buyPrice, int orderSize, address trader) external override returns (bool) {
 
         Option memory option;
         OptionOrder memory buyOptionOrder;
@@ -31,25 +39,21 @@ contract OptionManager is IOptionManager{
         buyOptionOrder.buyPrice = buyPrice;
         buyOptionOrder.epochId = epochId;
 
-        if (traderCurEpochOptionOrders[buyer].length == 0) {
-            curEpochTraders.push(buyer);
+        if (traderCurEpochOptionOrders[trader].length == 0) {
+            curEpochTraders.push(trader);
         }
-
-        traderCurEpochOptionOrders[buyer].push(buyOptionOrder);
+        traderCurEpochOptionOrders[trader].push(buyOptionOrder);
         curEpochTotalProfit += buyPrice * orderSize;
-
         return true;
     }
 
     /**
-     * @notice returns 这一轮 optimistic 的盈亏
+     * @notice returns 这一轮平台方的盈亏
      * @param settlePrice 结算价格
      * @param epochId 当前 epoch 轮数
      **/
     function calculateTraderProfit(int settlePrice, uint epochId) public returns (int) {
-
         require (settlePrice >= 0);
-
         settlePriceRecords[epochId] = settlePrice;
         for (uint i = 0; i < curEpochTraders.length; ++i) {
             address trader = curEpochTraders[i];
@@ -67,7 +71,6 @@ contract OptionManager is IOptionManager{
                 traderCurEpochOptionOrders[trader][j].state = OptionOrderState.Settled;
                 traderCurEpochOptionOrders[trader][j].settlePrice = settlePrice;
                 int orderSize = traderCurEpochOptionOrders[trader][j].orderSize;
-
                 // Settle CALL
                 if (traderCurEpochOptionOrders[trader][j].option.optionType == true) {
                     if (settlePrice >= traderCurEpochOptionOrders[trader][j].option.strikePrice) {
