@@ -170,6 +170,17 @@ contract Optimistic {
         newDepositRequest[msg.sender] += _amount;
     }
 
+    function traderTransfer(int _amount) public {
+        _amount = _amount * USDCDEMICAL;
+        if (transferUSDC) {
+            uint256 balance = USDCProtocol.balanceOf(msg.sender);
+            require(balance >= uint(_amount), "insufficient token");
+            bool success = USDCProtocol.transferFrom(msg.sender, address(this), uint(_amount));
+            require(success, "error transfer usdc");
+        }
+        traderProfitPool[msg.sender] += _amount;
+    }
+
     function investorWithDraw(int _amount) public {
         require (curInvestorExist(msg.sender), "invalid investor.");
         _amount = _amount * USDCDEMICAL;
@@ -223,17 +234,10 @@ contract Optimistic {
 
         require (orderSize > 0, "orderSize smaller than 1.");
         require (totalBalance - curEpochLockedBalance >= orderSize * USDCDEMICAL, "insufficient option supply.");
-
-        uint balance = USDCProtocol.balanceOf(msg.sender);
-        require (int(balance) + traderProfitPool[msg.sender] >= cost, "insufficient balance.");
-
-        if (traderProfitPool[msg.sender] >= cost) {
-            traderProfitPool[msg.sender] -= cost;
-        } else {
-            bool success = USDCProtocol.transferFrom(msg.sender, address(this), uint(cost - traderProfitPool[msg.sender]));
-            traderProfitPool[msg.sender] = 0;
-            require(success, "error transfer usdc");
-        }
+        require (traderProfitPool[msg.sender] >= cost, "insufficient balance.");
+        
+        // 直接扣减余额
+        traderProfitPool[msg.sender] -= cost;
 
         // 购买成功的逻辑
         curEpochLockedBalance += orderSize * 1 * USDCDEMICAL;
