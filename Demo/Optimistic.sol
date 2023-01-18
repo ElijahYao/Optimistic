@@ -3,6 +3,8 @@ pragma solidity >=0.7.0 <0.9.0;
 import "hardhat/console.sol";
 import "contracts/OptionManager.sol";
 import "contracts/LiquidityPoolManager.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "./Verifysig.sol";
 
 interface USDC {
     function balanceOf(address account) external view returns (uint256);
@@ -60,11 +62,12 @@ contract Optimistic  {
     }
 
     // trader 购买期权。
-    function traderBuy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int orderSize) public isStarted {
+    function traderBuy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int orderSize, bytes memory _signature) public isStarted {
         require (epochId == productEpochId, "invalid epochId.");
         require (strikeTime == curEpochEndTime && block.timestamp <= curEpochEndTime, "invalid strikeTime.");
         require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "invalid strikePrice.");
         require (buyPrice >= MINOPTIONPRICE && buyPrice <= MAXOPTIONPRICE, "invalid buy price.");
+        require (Verifysig.verifyPrice(Strings.toString(uint(buyPrice)), _signature, owner), "invalid buy price source.");
         require (orderSize >= 1);
         int traderAvaliableBalance = optionManager.getTraderAvaliableBalance(msg.sender);
         require (traderAvaliableBalance >= buyPrice * orderSize);

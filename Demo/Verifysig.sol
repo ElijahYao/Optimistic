@@ -3,22 +3,17 @@ pragma solidity >=0.7.0 <0.9.0;
 
 
 // 签名验证合约, 签名\校验\恢复
-contract Verifysig {
-    address immutable public signer;
-
-    constructor() {
-        signer = 0x4C7DaB8b982aa2580F7D59f0bcac103b949b1cd7;
-    }
+library Verifysig {
 
     /**
      * @dev 通过ECDSA，验证签名地址是否正确，如果正确则返回true
      * price为原始价格数据
      * _signature为签名
      */
-    function main(string memory price, bytes memory _signature) public view returns (bool) {
+    function verifyPrice(string memory price, bytes memory _signature, address _signer) public pure returns (bool) {
         bytes32 _msgHash = getMessageHash(price); // 将price打包成hash
         bytes32 _ethSignedMessageHash = toEthSignedMessageHash(_msgHash); // 计算以太坊签名消息
-        return verify(_ethSignedMessageHash, _signature, signer); // ECDSA检验通过
+        return verify(_ethSignedMessageHash, _signature, _signer); // ECDSA检验通过
     }
 
     function getMessageHash(string memory price) public pure returns(bytes32){
