@@ -20,6 +20,7 @@ contract Optimistic  {
 
     address public owner;
     bool transferUSDC;
+    bool test;
     uint epochId;                                                       // 当前轮数
 
     int public curEpochLockedBalance = 0;                               // 当前交易周期锁定 USDC 数量   
@@ -28,27 +29,51 @@ contract Optimistic  {
     int256 public maxStrikePrice;                                       // 当前 Epoch 售卖期权的最高的行权价格。
     int256 public minStrikePrice;                                       // 当前 Epoch 售卖期权的最低的行权价格。
 
+    int public immutable MINOPTIONPRICE = (5 * 10 ** 6 / 100);
+    int public immutable MAXOPTIONPRICE = (100 * 10 ** 6 / 100);
+
     constructor() {
-        transferUSDC = false; 
+        transferUSDC = false;
+        test = true;
         USDCProtocol = USDC(0xd9145CCE52D386f254917e481eB44e9943F39138);
         optionManager = OptionManager(0xd9145CCE52D386f254917e481eB44e9943F39138);
         liquidityPoolManager = LiquidityPoolManager(0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8);
     }
 
-    // trader 购买期权。
-    function traderBuy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int orderSize) public returns (bool) {
+    modifier isOwner() {
+        require(msg.sender == owner, "caller is not owner");
+        _;
+    }
+
+    modifier isStarted() {
+        require(epochId >= 1, "not stated.");
+        _;
+    }
+
+    function traderDeposit(int depositAmount) public{
         if (transferUSDC) {
-            bool success = USDCProtocol.transfer(msg.sender, uint(buyPrice * orderSize));
+            bool success = USDCProtocol.transfer(msg.sender, uint(depositAmount));
             require(success, "error transfer usdc.");
         }
-        bool addSuccess = optionManager.addOption(strikeTime, strikePrice, optionType, productEpochId, buyPrice, orderSize, msg.sender);
-        return addSuccess;
+        optionManager.traderDeposit(msg.sender, depositAmount);
+    }
+
+    // trader 购买期权。
+    function traderBuy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int orderSize) public isStarted {
+        require (epochId == productEpochId, "invalid epochId.");
+        require (strikeTime == curEpochEndTime && block.timestamp <= curEpochEndTime, "invalid strikeTime.");
+        require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "invalid strikePrice.");
+        require (buyPrice >= MINOPTIONPRICE && buyPrice <= MAXOPTIONPRICE, "invalid buy price.");
+        require (orderSize >= 1);
+        int traderAvaliableBalance = optionManager.getTraderAvaliableBalance(msg.sender);
+        require (traderAvaliableBalance >= buyPrice * orderSize);
+        optionManager.addOption(strikeTime, strikePrice, optionType, productEpochId, buyPrice, orderSize, msg.sender);
     }
 
     // trader 取钱, withdrawAmount = 真实取款 USDC 数量 * 10^6。
-    function traderWithdraw(int withdrawAmount) public {
-        int traderProfit = optionManager.getTraderProfit(msg.sender);
-        require (traderProfit >= withdrawAmount, "insufficient profit.");
+    function traderWithdraw(int withdrawAmount) public isStarted {
+        int traderAvaliableBalance = optionManager.getTraderAvaliableBalance(msg.sender);
+        require (traderAvaliableBalance >= withdrawAmount, "insufficient profit.");
         if (transferUSDC) {
             bool success = USDCProtocol.transfer(msg.sender, uint(withdrawAmount));
             require(success, "error transfer usdc.");
@@ -67,7 +92,7 @@ contract Optimistic  {
     }
 
     // investor 提款请求。
-    function investorWithDraw(int withdrawAmount) public {
+    function investorWithDraw(int withdrawAmount) public isStarted {
         liquidityPoolManager.investorWithdrawRequest(msg.sender, withdrawAmount);
     }
 
@@ -83,9 +108,13 @@ contract Optimistic  {
     }
 
     // admin 重新开始一个新的 epoch。
-    function adminStartNewEpoch(int settlePrice, int _maxStrikePrice, int _minStrikePrice, uint256 _curEpochEndTime) public {
+    function adminStartNewEpoch(int settlePrice, int _maxStrikePrice, int _minStrikePrice, uint256 _curEpochEndTime) public isOwner {
         // 第一个 epoch
+        require(_curEpochEndTime > block.timestamp + 1800, "invalid _curEpochEndTime.");
         if (epochId != 0) {
+            if (test == false) {
+                require(block.timestamp > curEpochEndTime);
+            }
             int curEpochLiquidityPoolProfit = optionManager.calculateTraderProfit(settlePrice, epochId);
             optionManager.resetCurEpochProfit();
             liquidityPoolManager.settlementProcess(curEpochLiquidityPoolProfit);
@@ -100,7 +129,7 @@ contract Optimistic  {
     }
 
     // admin 提款。
-    function adminWithDraw(int withdrawAmount) public {
+    function adminWithDraw(int withdrawAmount) public isOwner {
         require (withdrawAmount <= optimisticBalance);
         bool success = USDCProtocol.transferFrom(address(this), owner, uint(withdrawAmount));
         require (success, "error transfer usdc.");
