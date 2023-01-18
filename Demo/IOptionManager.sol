@@ -24,5 +24,5 @@ interface IOptionManager {
         int settlePrice;
     }
 
-    function addOption(uint strikeTime, int strikePrice, bool optionType, uint epochId, int buyPrice, int orderSize, address buyer) external returns (bool);
+    function addOption(uint strikeTime, int strikePrice, bool optionType, uint epochId, int buyPrice, int orderSize, address buyer) external ;
 }
