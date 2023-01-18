@@ -33,6 +33,7 @@ contract Optimistic  {
     int public immutable MAXOPTIONPRICE = (100 * 10 ** 6 / 100);
 
     constructor() {
+        owner = msg.sender;
         transferUSDC = false;
         test = true;
         USDCProtocol = USDC(0xd9145CCE52D386f254917e481eB44e9943F39138);
