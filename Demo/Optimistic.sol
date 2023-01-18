@@ -34,6 +34,8 @@ contract Optimistic  {
     int public immutable MINOPTIONPRICE = (5 * 10 ** 6 / 100);
     int public immutable MAXOPTIONPRICE = (100 * 10 ** 6 / 100);
 
+    int withDrawFeeRate = 1000;
+
     constructor() {
         owner = msg.sender;
         transferUSDC = false;
@@ -79,7 +81,8 @@ contract Optimistic  {
         int traderAvaliableBalance = optionManager.getTraderAvaliableBalance(msg.sender);
         require (traderAvaliableBalance >= withdrawAmount, "insufficient profit.");
         if (transferUSDC) {
-            bool success = USDCProtocol.transfer(msg.sender, uint(withdrawAmount));
+            fees = withdrawAmount/withDrawFeeRate;
+            bool success = USDCProtocol.transfer(msg.sender, uint(withdrawAmount - fees));
             require(success, "error transfer usdc.");
         }
         optionManager.traderWithdraw(msg.sender, withdrawAmount);
