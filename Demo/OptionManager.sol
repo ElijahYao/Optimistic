@@ -16,8 +16,8 @@ contract OptionManager is IOptionManager{
     int public immutable USDCDEMICAL = 10 ** 6;
     int public curEpochTotalProfit;
 
-    function getTraderProfit(address trader) external view returns (int) {
-        return traderProfitPool[trader];
+    function getTraderAvaliableBalance(address trader) external view returns (int) {
+        return traderProfitPool[trader];                
     }
 
     function resetCurEpochProfit() external {
@@ -28,8 +28,13 @@ contract OptionManager is IOptionManager{
         traderProfitPool[trader] -= withdrawAmount;
     }
 
+    function traderDeposit(address trader, int depositAmount) external {
+        traderProfitPool[trader] += depositAmount;
+    }
 
-    function addOption(uint strikeTime, int strikePrice, bool optionType, uint epochId, int buyPrice, int orderSize, address trader) external override returns (bool) {
+    function addOption(uint strikeTime, int strikePrice, bool optionType, uint epochId, int buyPrice, int orderSize, address trader) external override {
+        
+        traderProfitPool[trader] -= orderSize * buyPrice;
 
         Option memory option;
         OptionOrder memory buyOptionOrder;
@@ -47,9 +52,9 @@ contract OptionManager is IOptionManager{
         if (traderCurEpochOptionOrders[trader].length == 0) {
             curEpochTraders.push(trader);
         }
+
         traderCurEpochOptionOrders[trader].push(buyOptionOrder);
         curEpochTotalProfit += buyPrice * orderSize;
-        return true;
     }
 
     /**
