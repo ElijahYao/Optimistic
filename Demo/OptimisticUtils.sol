@@ -3,21 +3,24 @@ pragma solidity >=0.7.0 <0.9.0;
 
 
 // 签名验证合约, 签名\校验\恢复
-library Verifysig {
+library OptimisticUtils {
+
+    function abs(int x) public pure returns (int) {
+        return x >= 0 ? x : -x;
+    }
+
+    function generateSignMesaageHash(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int futurePrice, int priceGenerateTime) public pure returns(bytes32) {
+        return keccak256(abi.encodePacked(strikeTime,strikePrice,optionType,productEpochId,buyPrice,futurePrice,priceGenerateTime));
+    }
 
     /**
      * @dev 通过ECDSA，验证签名地址是否正确，如果正确则返回true
      * price为原始价格数据
      * _signature为签名
      */
-    function verifyPrice(string memory price, bytes memory _signature, address _signer) public pure returns (bool) {
-        bytes32 _msgHash = getMessageHash(price); // 将price打包成hash
+    function verifyMsg(bytes32 _msgHash, bytes memory _signature, address _signer) public pure returns (bool) {
         bytes32 _ethSignedMessageHash = toEthSignedMessageHash(_msgHash); // 计算以太坊签名消息
         return verify(_ethSignedMessageHash, _signature, _signer); // ECDSA检验通过
-    }
-
-    function getMessageHash(string memory price) public pure returns(bytes32){
-        return keccak256(abi.encodePacked(price));
     }
 
     /**
