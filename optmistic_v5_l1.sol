@@ -122,7 +122,7 @@ contract Optimistic {
         return traderProfitPool[msg.sender];
     } 
 
-    function getNow() private view returns (uint) {
+    function getNow() public view returns (uint) {
         return block.timestamp;
     }
 
@@ -229,7 +229,7 @@ contract Optimistic {
         require (buyPrice % (10 ** 4) == 0, "invalid buy price.");
 
         // 检查 orderSize & 是否支持当前的购买
-        int orderSize = (_amount * USDCDEMICAL) / buyPrice;
+        int orderSize = _amount / buyPrice;
         int cost = buyPrice * orderSize;
 
         require (orderSize > 0, "orderSize smaller than 1.");
