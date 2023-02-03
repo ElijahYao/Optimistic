@@ -9,6 +9,8 @@ contract OptionManager is IOptionManager{
     mapping (address => OptionOrder[]) public traderHistoryOptionOrders;
     mapping (uint => int) public settlePriceRecords;
     mapping (address => int) public traderProfitPool;
+    mapping (address => bool) public permission;
+    address public admin;
     
     address[] public curEpochTraders;
 
@@ -16,23 +18,41 @@ contract OptionManager is IOptionManager{
     int public immutable USDCDEMICAL = 10 ** 6;
     int public curEpochTotalProfit;
 
+    constructor() {
+        admin = msg.sender; 
+    }
+
+    modifier isAdmin() {
+        require(msg.sender == admin, "caller is not admin.");
+        _;
+    }
+
+    modifier isOptimistic() {
+        require(permission[msg.sender] == true, "caller is not optimistic.");
+        _;
+    }
+
+    function addPermission(address optmisticAddr) public isAdmin {
+        permission[optmisticAddr] = true;
+    }
+
     function getTraderAvaliableBalance(address trader) external view returns (int) {
         return traderProfitPool[trader];                
     }
 
-    function resetCurEpochProfit() external {
+    function resetCurEpochProfit() external isOptimistic {
         curEpochTotalProfit = 0;
     }
 
-    function traderWithdraw(address trader, int withdrawAmount) external {
+    function traderWithdraw(address trader, int withdrawAmount) external isOptimistic {
         traderProfitPool[trader] -= withdrawAmount;
     }
 
-    function traderDeposit(address trader, int depositAmount) external {
+    function traderDeposit(address trader, int depositAmount) external isOptimistic {
         traderProfitPool[trader] += depositAmount;
     }
 
-    function addOption(uint strikeTime, int strikePrice, bool optionType, uint epochId, int buyPrice, int orderSize, address trader) external override {
+    function addOption(uint strikeTime, int strikePrice, bool optionType, uint epochId, int buyPrice, int orderSize, address trader) external isOptimistic {
         
         traderProfitPool[trader] -= orderSize * buyPrice;
 
@@ -62,7 +82,7 @@ contract OptionManager is IOptionManager{
      * @param settlePrice 结算价格
      * @param epochId 当前 epoch 轮数
      **/
-    function calculateTraderProfit(int settlePrice, uint epochId) public returns (int) {
+    function calculateTraderProfit(int settlePrice, uint epochId) external isOptimistic returns (int) {
         require (settlePrice >= 0);
         settlePriceRecords[epochId] = settlePrice;
         for (uint i = 0; i < curEpochTraders.length; ++i) {
