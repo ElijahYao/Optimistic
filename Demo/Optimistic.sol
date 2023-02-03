@@ -67,13 +67,16 @@ contract Optimistic  {
     }
 
     // trader 购买期权。
-    function traderBuy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int orderSize, int futurePrice, int buyPriceGenerateTime, bytes memory _signature) public isStarted {
+    function traderBuy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int orderSize, uint futurePrice, uint buyPriceGenerateTime, bytes memory _signature) public isStarted {
         require (epochId == productEpochId, "invalid epochId.");
         require (strikeTime == curEpochEndTime && block.timestamp <= curEpochEndTime, "invalid strikeTime.");
         require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "invalid strikePrice.");
         require (buyPrice >= MINOPTIONPRICE && buyPrice <= MAXOPTIONPRICE, "invalid buy price.");
+
+        string memory option_type = optionType ? "CALL" : "PUT";
+        string memory message = string.concat(Strings.toString(strikeTime), Strings.toString(uint(strikePrice)), option_type, Strings.toString(productEpochId), Strings.toString(uint(buyPrice)), Strings.toString(futurePrice), Strings.toString(buyPriceGenerateTime));
         // 价格来源通过签名验证有效性
-        require (OptimisticUtils.verifyMsg(OptimisticUtils.generateSignMesaageHash(strikeTime, strikePrice, optionType, productEpochId, buyPrice, futurePrice, buyPriceGenerateTime), _signature, owner), "invalid buy price source.");
+        require (OptimisticUtils.verifyMsg(message, _signature, owner), "invalid buy price source.");
         // 价格生成时间最近，生成时间由上一步签名验证有效性
         require (block.timestamp < buyPriceGenerateTime + 3 minutes, "invalid price generate time");
         // 价格变化不能过大，防止套利

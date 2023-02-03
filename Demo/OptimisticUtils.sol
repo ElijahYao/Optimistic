@@ -9,8 +9,8 @@ library OptimisticUtils {
         return x >= 0 ? x : -x;
     }
 
-    function generateSignMesaageHash(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int futurePrice, int priceGenerateTime) public pure returns(bytes32) {
-        return keccak256(abi.encodePacked(strikeTime,strikePrice,optionType,productEpochId,buyPrice,futurePrice,priceGenerateTime));
+    function getMessageHash(string memory message) public pure returns(bytes32){
+        return keccak256(abi.encodePacked(message));
     }
 
     /**
@@ -18,7 +18,8 @@ library OptimisticUtils {
      * price为原始价格数据
      * _signature为签名
      */
-    function verifyMsg(bytes32 _msgHash, bytes memory _signature, address _signer) public pure returns (bool) {
+    function verifyMsg(string memory message, bytes memory _signature, address _signer) public pure returns (bool) {
+        bytes32 _msgHash = getMessageHash(message); // 打包成hash
         bytes32 _ethSignedMessageHash = toEthSignedMessageHash(_msgHash); // 计算以太坊签名消息
         return verify(_ethSignedMessageHash, _signature, _signer); // ECDSA检验通过
     }
