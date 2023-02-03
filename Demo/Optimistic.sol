@@ -73,7 +73,7 @@ contract Optimistic  {
         require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "invalid strikePrice.");
         require (buyPrice >= MINOPTIONPRICE && buyPrice <= MAXOPTIONPRICE, "invalid buy price.");
         // 价格来源通过签名验证有效性
-        require (OptimisticUtils.verifyPrice(OptimisticUtils.generateSignMesaageHash(strikeTime, strikePrice, optionType, productEpochId, buyPrice, futurePrice, priceGenerateTime), _signature, owner), "invalid buy price source.");
+        require (OptimisticUtils.verifyMsg(OptimisticUtils.generateSignMesaageHash(strikeTime, strikePrice, optionType, productEpochId, buyPrice, futurePrice, buyPriceGenerateTime), _signature, owner), "invalid buy price source.");
         // 价格生成时间最近，生成时间由上一步签名验证有效性
         require (block.timestamp < buyPriceGenerateTime + 3 minutes, "invalid price generate time");
         // 价格变化不能过大，防止套利
