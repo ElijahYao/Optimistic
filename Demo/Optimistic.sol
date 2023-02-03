@@ -29,6 +29,7 @@ contract Optimistic  {
     int public curEpochLockedBalance = 0;                               // 当前交易周期锁定 USDC 数量   
     int public optimisticBalance;                                       // 平台方收益
     uint256 public curEpochEndTime;                                     // 当前 Epoch 结束时间。
+    uint256 public curEpochStartTime;                                   // 当前 Epoch 开始时间。
     int256 public maxStrikePrice;                                       // 当前 Epoch 售卖期权的最高的行权价格。
     int256 public minStrikePrice;                                       // 当前 Epoch 售卖期权的最低的行权价格。
 
@@ -83,7 +84,7 @@ contract Optimistic  {
         require (OptimisticUtils.abs(priceProvider.latestAnswer() - futurePrice) * 100 / futurePrice < 5, "buy failed, price changes too fast");
         require (orderSize >= 1);
         int traderAvaliableBalance = optionManager.getTraderAvaliableBalance(msg.sender);
-        require (traderAvaliableBalance >= buyPrice * orderSize);
+        require (traderAvaliableBalance >= buyPrice * orderSize, "insufficient balance.");
         optionManager.addOption(strikeTime, strikePrice, optionType, productEpochId, buyPrice, orderSize, msg.sender);
     }
 
@@ -140,6 +141,7 @@ contract Optimistic  {
         } else {
             liquidityPoolManager.firstDepositProcess();
         }
+        curEpochStartTime = block.timestamp;
         curEpochEndTime = _curEpochEndTime;
         maxStrikePrice = _maxStrikePrice;
         minStrikePrice = _minStrikePrice;

@@ -16,6 +16,29 @@ contract LiquidityPoolManager{
     address[] newDepositors;                                // 当前交易周期新存款者列表
     address[] newWithdrawers;                               // 当前交易周期新提款
 
+    // permission control start.
+    mapping (address => bool) public permission;
+    address public admin;
+
+    constructor() {
+        admin = msg.sender; 
+    }
+
+    modifier isAdmin() {
+        require(msg.sender == admin, "caller is not admin.");
+        _;
+    }
+
+    modifier isOptimistic() {
+        require(permission[msg.sender] == true, "caller is not optimistic.");
+        _;
+    }
+
+    function addPermission(address optmisticAddr) public isAdmin {
+        permission[optmisticAddr] = true;
+    }
+    // permission control end.
+
     function investorExist(address investor) private view returns (bool) {
         for (uint i = 0; i < investors.length; i++) {
             if (investors[i] == investor) {
@@ -33,14 +56,14 @@ contract LiquidityPoolManager{
         return investorsWithdrawPool[investor];
     }
 
-    function investorDeposit(address investor, int investAmount) external {
+    function investorDeposit(address investor, int investAmount) external isOptimistic {
         if (newDepositRequest[investor] == 0) {
             newDepositors.push(investor);
         }
         newDepositRequest[investor] += investAmount;
     }
 
-    function investorWithdrawRequest(address investor, int withdrawAmount) external {
+    function investorWithdrawRequest(address investor, int withdrawAmount) external isOptimistic {
         require(investorExist(investor), "invalid investor.");
         if (newWithdrawRequest[investor] == 0) {
             newWithdrawers.push(investor); 
@@ -48,7 +71,7 @@ contract LiquidityPoolManager{
         newWithdrawRequest[investor] += withdrawAmount;
     }
 
-    function investorActualWithdraw(address investor, int withdrawAmount) external {
+    function investorActualWithdraw(address investor, int withdrawAmount) external isOptimistic {
         investorsWithdrawPool[investor] -= withdrawAmount;
     }
 
@@ -65,11 +88,11 @@ contract LiquidityPoolManager{
         newDepositors = new address[](0);
     }
 
-    function firstDepositProcess() external {
+    function firstDepositProcess() external isOptimistic {
         depositProcess();
     }
 
-    function settlementProcess(int liquidityPoolProfit) external {
+    function settlementProcess(int liquidityPoolProfit) external isOptimistic {
         int curEpochTotalProfit = liquidityPoolProfit;
         int lastTotalBalance = totalBalance; 
         totalBalance = 0;
