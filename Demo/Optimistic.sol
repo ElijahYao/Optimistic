@@ -3,6 +3,9 @@ pragma solidity >=0.7.0 <0.9.0;
 import "hardhat/console.sol";
 import "contracts/OptionManager.sol";
 import "contracts/LiquidityPoolManager.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "contracts/OptimisticUtils.sol";
 
 interface USDC {
     function balanceOf(address account) external view returns (uint256);
@@ -17,11 +20,14 @@ contract Optimistic  {
     USDC public USDCProtocol;
     OptionManager public immutable optionManager;
     LiquidityPoolManager public immutable liquidityPoolManager;
+    
 
     address public owner;
     bool transferUSDC;
     bool test;
     uint epochId;                                                       // 当前轮数
+
+    AggregatorV3Interface internal priceProvider;
 
     int public curEpochLockedBalance = 0;                               // 当前交易周期锁定 USDC 数量   
     int public optimisticBalance;                                       // 平台方收益
@@ -33,6 +39,9 @@ contract Optimistic  {
     int public immutable MINOPTIONPRICE = (5 * 10 ** 6 / 100);
     int public immutable MAXOPTIONPRICE = (100 * 10 ** 6 / 100);
 
+    int withDrawFeeDeno = 1000;
+    int withDrawFeeNume = 2;
+
     constructor() {
         owner = msg.sender;
         transferUSDC = false;
@@ -40,6 +49,7 @@ contract Optimistic  {
         USDCProtocol = USDC(0xd9145CCE52D386f254917e481eB44e9943F39138);
         optionManager = OptionManager(0xd9145CCE52D386f254917e481eB44e9943F39138);
         liquidityPoolManager = LiquidityPoolManager(0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8);
+        priceProvider = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
     }
 
     modifier isOwner() {
@@ -52,6 +62,18 @@ contract Optimistic  {
         _;
     }
 
+    function getLatestPrice() public view returns (int) {
+        // prettier-ignore
+        (
+            /* uint80 roundID */,
+            int price,
+            /*uint startedAt*/,
+            /*uint timeStamp*/,
+            /*uint80 answeredInRound*/
+        ) = priceProvider.latestRoundData();
+        return price;
+    }
+
     function traderDeposit(int depositAmount) public{
         if (transferUSDC) {
             bool success = USDCProtocol.transfer(msg.sender, uint(depositAmount));
@@ -61,11 +83,20 @@ contract Optimistic  {
     }
 
     // trader 购买期权。
-    function traderBuy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int orderSize) public isStarted {
+    function traderBuy(uint strikeTime, int strikePrice, bool optionType, uint productEpochId, int buyPrice, int orderSize, uint futurePrice, uint buyPriceGenerateTime, bytes memory _signature) public isStarted {
         require (epochId == productEpochId, "invalid epochId.");
         require (strikeTime == curEpochEndTime && block.timestamp <= curEpochEndTime, "invalid strikeTime.");
         require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "invalid strikePrice.");
         require (buyPrice >= MINOPTIONPRICE && buyPrice <= MAXOPTIONPRICE, "invalid buy price.");
+
+        string memory option_type = optionType ? "CALL" : "PUT";
+        string memory message = string.concat(Strings.toString(strikeTime), Strings.toString(uint(strikePrice)), option_type, Strings.toString(productEpochId), Strings.toString(uint(buyPrice)), Strings.toString(futurePrice), Strings.toString(buyPriceGenerateTime));
+        // 价格来源通过签名验证有效性
+        require (OptimisticUtils.verifyMsg(message, _signature, owner), "invalid buy price source.");
+        // 价格生成时间最近，生成时间由上一步签名验证有效性
+        require (block.timestamp < buyPriceGenerateTime + 3 minutes, "invalid price generate time");
+        // 价格变化不能过大，防止套利
+        require (OptimisticUtils.abs(getLatestPrice() - int(futurePrice)) * 100 / int(futurePrice) < 5, "buy failed, price changes too fast");
         require (orderSize >= 1);
         int traderAvaliableBalance = optionManager.getTraderAvaliableBalance(msg.sender);
         require (traderAvaliableBalance >= buyPrice * orderSize, "insufficient balance.");
@@ -76,8 +107,10 @@ contract Optimistic  {
     function traderWithdraw(int withdrawAmount) public isStarted {
         int traderAvaliableBalance = optionManager.getTraderAvaliableBalance(msg.sender);
         require (traderAvaliableBalance >= withdrawAmount, "insufficient profit.");
+        int fees = withdrawAmount * withDrawFeeNume / withDrawFeeDeno;
+        optimisticBalance += fees;
         if (transferUSDC) {
-            bool success = USDCProtocol.transfer(msg.sender, uint(withdrawAmount));
+            bool success = USDCProtocol.transfer(msg.sender, uint(withdrawAmount - fees));
             require(success, "error transfer usdc.");
         }
         optionManager.traderWithdraw(msg.sender, withdrawAmount);
