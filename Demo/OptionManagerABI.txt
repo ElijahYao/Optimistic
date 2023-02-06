@@ -1,0 +1,406 @@
+[
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"inputs": [],
+		"name": "USDCDEMICAL",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "strikeTime",
+				"type": "uint256"
+			},
+			{
+				"internalType": "int256",
+				"name": "strikePrice",
+				"type": "int256"
+			},
+			{
+				"internalType": "bool",
+				"name": "optionType",
+				"type": "bool"
+			},
+			{
+				"internalType": "uint256",
+				"name": "epochId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "int256",
+				"name": "buyPrice",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "orderSize",
+				"type": "int256"
+			},
+			{
+				"internalType": "address",
+				"name": "trader",
+				"type": "address"
+			}
+		],
+		"name": "addOption",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "optmisticAddr",
+				"type": "address"
+			}
+		],
+		"name": "addPermission",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "admin",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "int256",
+				"name": "settlePrice",
+				"type": "int256"
+			},
+			{
+				"internalType": "uint256",
+				"name": "epochId",
+				"type": "uint256"
+			}
+		],
+		"name": "calculateTraderProfit",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "curEpochTotalProfit",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "curEpochTraders",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "trader",
+				"type": "address"
+			}
+		],
+		"name": "getTraderAvaliableBalance",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "permission",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "resetCurEpochProfit",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "settlePriceRecords",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "traderCurEpochOptionOrders",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "int256",
+						"name": "strikePrice",
+						"type": "int256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "strikeTime",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "optionType",
+						"type": "bool"
+					}
+				],
+				"internalType": "struct IOptionManager.Option",
+				"name": "option",
+				"type": "tuple"
+			},
+			{
+				"internalType": "enum IOptionManager.OptionOrderState",
+				"name": "state",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "epochId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "int256",
+				"name": "orderSize",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "buyPrice",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "sellPrice",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "settlePrice",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "trader",
+				"type": "address"
+			},
+			{
+				"internalType": "int256",
+				"name": "depositAmount",
+				"type": "int256"
+			}
+		],
+		"name": "traderDeposit",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"name": "traderHistoryOptionOrders",
+		"outputs": [
+			{
+				"components": [
+					{
+						"internalType": "int256",
+						"name": "strikePrice",
+						"type": "int256"
+					},
+					{
+						"internalType": "uint256",
+						"name": "strikeTime",
+						"type": "uint256"
+					},
+					{
+						"internalType": "bool",
+						"name": "optionType",
+						"type": "bool"
+					}
+				],
+				"internalType": "struct IOptionManager.Option",
+				"name": "option",
+				"type": "tuple"
+			},
+			{
+				"internalType": "enum IOptionManager.OptionOrderState",
+				"name": "state",
+				"type": "uint8"
+			},
+			{
+				"internalType": "uint256",
+				"name": "epochId",
+				"type": "uint256"
+			},
+			{
+				"internalType": "int256",
+				"name": "orderSize",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "buyPrice",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "sellPrice",
+				"type": "int256"
+			},
+			{
+				"internalType": "int256",
+				"name": "settlePrice",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"name": "traderProfitPool",
+		"outputs": [
+			{
+				"internalType": "int256",
+				"name": "",
+				"type": "int256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "trader",
+				"type": "address"
+			},
+			{
+				"internalType": "int256",
+				"name": "withdrawAmount",
+				"type": "int256"
+			}
+		],
+		"name": "traderWithdraw",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	}
+]
