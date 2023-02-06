@@ -25,7 +25,7 @@ contract Optimistic  {
     address public owner;
     bool transferUSDC;
     bool test;
-    uint epochId;                                                       // 当前轮数
+    uint public epochId;                                                       // 当前轮数
 
     AggregatorV3Interface internal priceProvider;
 
