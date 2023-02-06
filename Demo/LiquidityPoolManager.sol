@@ -30,7 +30,7 @@ contract LiquidityPoolManager{
     }
 
     modifier isOptimistic() {
-        require(permission[msg.sender] == admin, "caller is not optimistic.");
+        require(permission[msg.sender] == true, "caller is not optimistic.");
         _;
     }
 
