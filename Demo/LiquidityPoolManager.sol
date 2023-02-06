@@ -22,6 +22,7 @@ contract LiquidityPoolManager{
 
     constructor() {
         admin = msg.sender; 
+        permission[admin] = true;
     }
 
     modifier isAdmin() {
