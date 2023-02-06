@@ -46,9 +46,9 @@ contract Optimistic  {
         owner = msg.sender;
         transferUSDC = false;
         test = true;
-        USDCProtocol = USDC(0xd9145CCE52D386f254917e481eB44e9943F39138);
-        optionManager = OptionManager(0xd9145CCE52D386f254917e481eB44e9943F39138);
-        liquidityPoolManager = LiquidityPoolManager(0xd8b934580fcE35a11B58C6D73aDeE468a2833fa8);
+        USDCProtocol = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
+        optionManager = OptionManager(0xb7e1a43b385e6A3C817bda1Ad33c54562c12c982);
+        liquidityPoolManager = LiquidityPoolManager(0x1E01dbF2F2375385759Ab2da07B8Bc4eE5d4c038);
         priceProvider = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
     }
 
@@ -60,6 +60,10 @@ contract Optimistic  {
     modifier isStarted() {
         require(epochId >= 1, "not stated.");
         _;
+    }
+
+    function getTraderProfitPool(address account) public view returns(int) {
+        return optionManager.traderProfitPool(account);
     }
 
     function getLatestPrice() public view returns (int) {
