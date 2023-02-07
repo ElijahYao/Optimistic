@@ -1,23 +1,5 @@
 [
 	{
-		"inputs": [],
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
-		"inputs": [],
-		"name": "USDCDEMICAL",
-		"outputs": [
-			{
-				"internalType": "int256",
-				"name": "",
-				"type": "int256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"inputs": [
 			{
 				"internalType": "uint256",
@@ -74,19 +56,6 @@
 		"type": "function"
 	},
 	{
-		"inputs": [],
-		"name": "admin",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
 		"inputs": [
 			{
 				"internalType": "int256",
@@ -108,6 +77,67 @@
 			}
 		],
 		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "resetCurEpochProfit",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "trader",
+				"type": "address"
+			},
+			{
+				"internalType": "int256",
+				"name": "depositAmount",
+				"type": "int256"
+			}
+		],
+		"name": "traderDeposit",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "trader",
+				"type": "address"
+			},
+			{
+				"internalType": "int256",
+				"name": "withdrawAmount",
+				"type": "int256"
+			}
+		],
+		"name": "traderWithdraw",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"stateMutability": "nonpayable",
+		"type": "constructor"
+	},
+	{
+		"inputs": [],
+		"name": "admin",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -137,6 +167,140 @@
 				"internalType": "address",
 				"name": "",
 				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getCurEpochOptions",
+		"outputs": [
+			{
+				"components": [
+					{
+						"components": [
+							{
+								"internalType": "int256",
+								"name": "strikePrice",
+								"type": "int256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "strikeTime",
+								"type": "uint256"
+							},
+							{
+								"internalType": "bool",
+								"name": "optionType",
+								"type": "bool"
+							}
+						],
+						"internalType": "struct IOptionManager.Option",
+						"name": "option",
+						"type": "tuple"
+					},
+					{
+						"internalType": "enum IOptionManager.OptionOrderState",
+						"name": "state",
+						"type": "uint8"
+					},
+					{
+						"internalType": "uint256",
+						"name": "epochId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "int256",
+						"name": "orderSize",
+						"type": "int256"
+					},
+					{
+						"internalType": "int256",
+						"name": "buyPrice",
+						"type": "int256"
+					},
+					{
+						"internalType": "int256",
+						"name": "sellPrice",
+						"type": "int256"
+					},
+					{
+						"internalType": "int256",
+						"name": "settlePrice",
+						"type": "int256"
+					}
+				],
+				"internalType": "struct IOptionManager.OptionOrder[]",
+				"name": "",
+				"type": "tuple[]"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "getHistoryOptions",
+		"outputs": [
+			{
+				"components": [
+					{
+						"components": [
+							{
+								"internalType": "int256",
+								"name": "strikePrice",
+								"type": "int256"
+							},
+							{
+								"internalType": "uint256",
+								"name": "strikeTime",
+								"type": "uint256"
+							},
+							{
+								"internalType": "bool",
+								"name": "optionType",
+								"type": "bool"
+							}
+						],
+						"internalType": "struct IOptionManager.Option",
+						"name": "option",
+						"type": "tuple"
+					},
+					{
+						"internalType": "enum IOptionManager.OptionOrderState",
+						"name": "state",
+						"type": "uint8"
+					},
+					{
+						"internalType": "uint256",
+						"name": "epochId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "int256",
+						"name": "orderSize",
+						"type": "int256"
+					},
+					{
+						"internalType": "int256",
+						"name": "buyPrice",
+						"type": "int256"
+					},
+					{
+						"internalType": "int256",
+						"name": "sellPrice",
+						"type": "int256"
+					},
+					{
+						"internalType": "int256",
+						"name": "settlePrice",
+						"type": "int256"
+					}
+				],
+				"internalType": "struct IOptionManager.OptionOrder[]",
+				"name": "",
+				"type": "tuple[]"
 			}
 		],
 		"stateMutability": "view",
@@ -178,13 +342,6 @@
 			}
 		],
 		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "resetCurEpochProfit",
-		"outputs": [],
-		"stateMutability": "nonpayable",
 		"type": "function"
 	},
 	{
@@ -281,24 +438,6 @@
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "trader",
-				"type": "address"
-			},
-			{
-				"internalType": "int256",
-				"name": "depositAmount",
-				"type": "int256"
-			}
-		],
-		"name": "traderDeposit",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
 				"name": "",
 				"type": "address"
 			},
@@ -386,21 +525,16 @@
 		"type": "function"
 	},
 	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "trader",
-				"type": "address"
-			},
+		"inputs": [],
+		"name": "USDCDEMICAL",
+		"outputs": [
 			{
 				"internalType": "int256",
-				"name": "withdrawAmount",
+				"name": "",
 				"type": "int256"
 			}
 		],
-		"name": "traderWithdraw",
-		"outputs": [],
-		"stateMutability": "nonpayable",
+		"stateMutability": "view",
 		"type": "function"
 	}
 ]
