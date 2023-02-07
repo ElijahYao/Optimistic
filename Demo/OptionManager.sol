@@ -36,6 +36,14 @@ contract OptionManager is IOptionManager{
         permission[optmisticAddr] = true;
     }
 
+    function getHistoryOptions() public view returns (OptionOrder[] memory) {
+        return traderHistoryOptionOrders[msg.sender];
+    }
+
+    function getCurEpochOptions() public view returns (OptionOrder[] memory) {
+        return traderCurEpochOptionOrders[msg.sender];
+    }
+
     function getTraderAvaliableBalance(address trader) external view returns (int) {
         return traderProfitPool[trader];                
     }
