@@ -44,10 +44,10 @@ contract Optimistic  {
 
     constructor() {
         owner = msg.sender;
-        transferUSDC = false;
+        transferUSDC = true;
         test = true;
         USDCProtocol = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
-        optionManager = OptionManager(0xb7e1a43b385e6A3C817bda1Ad33c54562c12c982);
+        optionManager = OptionManager(0x42715969A90b18d10969e8D0395213fC31fD0a3c);
         liquidityPoolManager = LiquidityPoolManager(0x1E01dbF2F2375385759Ab2da07B8Bc4eE5d4c038);
         priceProvider = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
     }
@@ -80,7 +80,7 @@ contract Optimistic  {
 
     function traderDeposit(int depositAmount) public{
         if (transferUSDC) {
-            bool success = USDCProtocol.transfer(msg.sender, uint(depositAmount));
+            bool success = USDCProtocol.transferFrom(msg.sender, address(this), uint(depositAmount));
             require(success, "error transfer usdc.");
         }
         optionManager.traderDeposit(msg.sender, depositAmount);
@@ -132,6 +132,8 @@ contract Optimistic  {
 
     // investor 提款请求。
     function investorWithDraw(int withdrawAmount) public isStarted {
+        int waitToWithdrawAmount = liquidityPoolManager.newWithdrawRequest(msg.sender);
+        require (waitToWithdrawAmount + withdrawAmount <= liquidityPoolManager.liquidityPool(msg.sender));
         liquidityPoolManager.investorWithdrawRequest(msg.sender, withdrawAmount);
     }
 
