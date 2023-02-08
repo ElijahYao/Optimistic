@@ -39,7 +39,7 @@ contract SmartETF {
 
     struct RebalanceRecords {
         uint timestamp;
-        int IndexPrice;
+        int indexPrice;
         int ETFPrice; 
     }
 
@@ -50,6 +50,7 @@ contract SmartETF {
         transferUSDC = false;
         multiplier = _multiplier; 
         priceProvider = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
+        USDCToken = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
     }
 
     modifier isAdmin() {
@@ -62,23 +63,28 @@ contract SmartETF {
     }
 
     function getFuturePrice() public view returns (int) {
-        // (
-        //     uint80 roundID, 
-        //     int price,
-        //     uint startedAt,
-        //     uint timeStamp,
-        //     uint80 answeredInRound
-        // ) = priceProvider.latestRoundData();
-        // // If the round is not complete yet, timestamp is 0
-        // require(timeStamp > 0, "Round not complete");
-        // return price;
-        return 1200 + createRandom(50);
+        (
+            uint80 roundID, 
+            int price,
+            uint startedAt,
+            uint timeStamp,
+            uint80 answeredInRound
+        ) = priceProvider.latestRoundData();
+        // If the round is not complete yet, timestamp is 0
+        require(timeStamp > 0, "Round not complete");
+        return price;
+        // return 1200 + createRandom(50);
     }
 
     // public funcs
     function getUserBalance(address user) public view returns (int) {
         require (user == msg.sender, "User is not caller");
         return userBalance[user];
+    }
+
+    function getUserPosition(address user) public view returns (int) {
+        require (user == msg.sender, "User is not caller");
+        return traderPositions[user];
     }
 
     function getCurrentETFPrice() public view returns (int) {
@@ -93,17 +99,17 @@ contract SmartETF {
         if (currentETFPrice <= 0) {
             currentETFPrice = minimumETFPrice;
         }
-        console.log("futurePrice=", uint(futurePrice));
-        if (priceChangeRatio >= 0) {
-            console.log("Positive priceChangeRatio", uint(priceChangeRatio));
-        } else {
-            console.log("Negative priceChangeRatio", uint(-priceChangeRatio));
-        }
-        console.log("currentETFPrice=", uint(currentETFPrice));
-
+        // console.log("futurePrice=", uint(futurePrice));
+        // if (priceChangeRatio >= 0) {
+        //     console.log("Positive priceChangeRatio", uint(priceChangeRatio));
+        // } else {
+        //     console.log("Negative priceChangeRatio", uint(-priceChangeRatio));
+        // }
+        // console.log("currentETFPrice=", uint(currentETFPrice));
         return currentETFPrice;
     }
 
+    // 用户充值。
     function userDeposit(int usdcAmount) public {
         require (usdcAmount >= 0, "Negative USDC amount");
         if (transferUSDC) {
@@ -113,6 +119,7 @@ contract SmartETF {
         userBalance[msg.sender] += usdcAmount;
     }
 
+    // 用户提款。
     function userWithdraw(int usdcAmount) public {
         require (usdcAmount >= 0, "Negative USDC amount");
         require (userBalance[msg.sender] >= usdcAmount, "Insufficient USDC balance");
@@ -123,6 +130,7 @@ contract SmartETF {
         userBalance[msg.sender] -= usdcAmount;
     }
 
+    // 用户购买 ETF。
     function userBuy(int usdcAmount) public {
         int currentETFPrice = getCurrentETFPrice();
         require (userBalance[msg.sender] >= usdcAmount, "Insufficient USDC balance");
@@ -132,6 +140,7 @@ contract SmartETF {
         userBalance[msg.sender] -= etfAmount * currentETFPrice;
     }
 
+    // 用户赎回 ETF。
     function userSell(int etfAmount) public {
         require (etfAmount > 0, "Negative ETF amount");
         int currentETFPrice = getCurrentETFPrice();
@@ -144,17 +153,22 @@ contract SmartETF {
 
     // 记录新的锚定价格, 当前的锚定价格对应的 ETF 价格。
     function reBalance() public isAdmin {
-        lastIndexPrice = getFuturePrice();
+
+        RebalanceRecords memory r;
+        r.timestamp = block.timestamp;
+        r.indexPrice = lastIndexPrice;
+        r.ETFPrice = lastETFPrice;
+
         lastETFPrice = getCurrentETFPrice();
+        lastIndexPrice = getFuturePrice();
+        
+        rebalanceRecords.push(r);
     }
 
     // 开始做市
     function startMarketing() public isAdmin {
         isStarted = true;
-        lastIndexPrice = getFuturePrice();
         lastETFPrice = initETFPrice;
-
-        console.log("lastIndexPrice=", uint(lastIndexPrice));
-        console.log("lastETFPrice=", uint(lastETFPrice));
+        lastIndexPrice = getFuturePrice();
     }
 }
