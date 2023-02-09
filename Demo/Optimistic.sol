@@ -92,6 +92,7 @@ contract Optimistic  {
         require (strikeTime == curEpochEndTime && block.timestamp <= curEpochEndTime, "invalid strikeTime.");
         require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "invalid strikePrice.");
         require (buyPrice >= MINOPTIONPRICE && buyPrice <= MAXOPTIONPRICE, "invalid buy price.");
+        require (block.timestamp <= curEpochEndTime - 30 minutes, "not for sale 30 minutes before settlement");
 
         string memory option_type = optionType ? "CALL" : "PUT";
         string memory message = string.concat(Strings.toString(strikeTime), Strings.toString(uint(strikePrice)), option_type, Strings.toString(productEpochId), Strings.toString(uint(buyPrice)), Strings.toString(futurePrice), Strings.toString(buyPriceGenerateTime));
