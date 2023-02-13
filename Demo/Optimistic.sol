@@ -48,7 +48,7 @@ contract Optimistic  {
         test = true;
         USDCProtocol = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
         optionManager = OptionManager(0x42715969A90b18d10969e8D0395213fC31fD0a3c);
-        liquidityPoolManager = LiquidityPoolManager(0x1E01dbF2F2375385759Ab2da07B8Bc4eE5d4c038);
+        liquidityPoolManager = LiquidityPoolManager(0x6A8497f47431C300730391C60e95E137689062f0);
         priceProvider = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
     }
 
@@ -142,8 +142,10 @@ contract Optimistic  {
     function investorActualWithDraw(int withdrawAmount) public {
         int withdrawPoolAmount = liquidityPoolManager.getWithdrawAmount(msg.sender);
         require (withdrawPoolAmount >= withdrawAmount, "insufficient balance.");
+        int fees = withdrawAmount * withDrawFeeNume / withDrawFeeDeno;
+        optimisticBalance += fees;
         if (transferUSDC) {
-            bool success = USDCProtocol.transfer(msg.sender, uint(withdrawAmount));
+            bool success = USDCProtocol.transfer(msg.sender, uint(withdrawAmount - fees));
             require (success, "error transfer usdc");
         }
         liquidityPoolManager.investorActualWithdraw(msg.sender, withdrawAmount);
@@ -159,7 +161,8 @@ contract Optimistic  {
             }
             int curEpochLiquidityPoolProfit = optionManager.calculateTraderProfit(settlePrice, epochId);
             optionManager.resetCurEpochProfit();
-            liquidityPoolManager.settlementProcess(curEpochLiquidityPoolProfit);
+            int fees = liquidityPoolManager.settlementProcess(curEpochLiquidityPoolProfit);
+            optimisticBalance += fees;
         } else {
             liquidityPoolManager.firstDepositProcess();
         }
