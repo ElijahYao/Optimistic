@@ -8,6 +8,7 @@ contract LiquidityPoolManager{
     mapping (address => int) public investorsWithdrawPool;  // 提款池 addr -> USDC 数量
     mapping (address => int) public newDepositRequest;      // 存款请求 addr -> USDC 数量
     mapping (address => int) public newWithdrawRequest;     // 提款请求 addr -> USDC 数量
+    mapping (uint => int) public lpProfitRecords;           // lp盈利记录
 
     int public totalBalance = 0;                            // 资金池 USDC 数量
     int public curEpochLockedBalance = 0;                   // 当前交易周期锁定 USDC 数量
@@ -20,9 +21,11 @@ contract LiquidityPoolManager{
     mapping (address => bool) public permission;
     address public admin;
 
+    int profitFeeDeno = 100;
+    int profitFeeNume = 2;
+
     constructor() {
         admin = msg.sender; 
-        permission[admin] = true;
     }
 
     modifier isAdmin() {
@@ -93,11 +96,16 @@ contract LiquidityPoolManager{
         depositProcess();
     }
 
-    function settlementProcess(int liquidityPoolProfit) external isOptimistic {
+    function settlementProcess(int liquidityPoolProfit, uint epochId) external isOptimistic returns(int) {
         int curEpochTotalProfit = liquidityPoolProfit;
         int lastTotalBalance = totalBalance; 
+        int fees = 0;
         totalBalance = 0;
-        console.log(uint(curEpochTotalProfit));
+        lpProfitRecords[epochId] = curEpochTotalProfit;
+        if (curEpochTotalProfit > 0) {
+            fees = curEpochTotalProfit * profitFeeNume / profitFeeDeno;
+            curEpochTotalProfit -= fees;
+        }
         for (uint i = 0; i < investors.length; ++i) {
             address investor = investors[i];
             if (liquidityPool[investor] == 0) {
@@ -118,5 +126,6 @@ contract LiquidityPoolManager{
         }
         newWithdrawers = new address[](0);
         depositProcess();
+        return fees;
     }
 }
