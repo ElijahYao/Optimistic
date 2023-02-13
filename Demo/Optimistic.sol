@@ -181,7 +181,7 @@ contract Optimistic  {
     // admin 提款。
     function adminWithDraw(int withdrawAmount) public isOwner {
         require (withdrawAmount <= optimisticBalance);
-        bool success = USDCProtocol.transferFrom(address(this), owner, uint(withdrawAmount));
+        bool success = USDCProtocol.transfer(owner, uint(withdrawAmount));
         require (success, "error transfer usdc.");
         optimisticBalance -= withdrawAmount;
     }
