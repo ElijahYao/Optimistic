@@ -38,6 +38,7 @@ contract Optimistic  {
 
     int public immutable MINOPTIONPRICE = (5 * 10 ** 6 / 100);
     int public immutable MAXOPTIONPRICE = (100 * 10 ** 6 / 100);
+    int public constant USDCDEMICAL = 10 ** 6;
 
     int withDrawFeeDeno = 1000;
     int withDrawFeeNume = 2;
@@ -93,6 +94,8 @@ contract Optimistic  {
         require (strikePrice >= minStrikePrice && strikePrice <= maxStrikePrice, "invalid strikePrice.");
         require (buyPrice >= MINOPTIONPRICE && buyPrice <= MAXOPTIONPRICE, "invalid buy price.");
         require (block.timestamp <= curEpochEndTime - 30 minutes, "not for sale 30 minutes before settlement");
+        int totalBalance = liquidityPoolManager.getTotalBalance();
+        require (orderSize * USDCDEMICAL <= totalBalance - curEpochLockedBalance, "insufficient option supply.");
 
         string memory option_type = optionType ? "CALL" : "PUT";
         string memory message = string.concat(Strings.toString(strikeTime), Strings.toString(uint(strikePrice)), option_type, Strings.toString(productEpochId), Strings.toString(uint(buyPrice)), Strings.toString(futurePrice), Strings.toString(buyPriceGenerateTime));
@@ -106,6 +109,7 @@ contract Optimistic  {
         int traderAvaliableBalance = optionManager.getTraderAvaliableBalance(msg.sender);
         require (traderAvaliableBalance >= buyPrice * orderSize, "insufficient balance.");
         optionManager.addOption(strikeTime, strikePrice, optionType, productEpochId, buyPrice, orderSize, msg.sender);
+        curEpochLockedBalance += orderSize * USDCDEMICAL;
     }
 
     // trader 取钱, withdrawAmount = 真实取款 USDC 数量 * 10^6。
