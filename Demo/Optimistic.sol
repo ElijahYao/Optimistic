@@ -40,8 +40,8 @@ contract Optimistic  {
     int public immutable MAXOPTIONPRICE = (100 * 10 ** 6 / 100);
     int public constant USDCDEMICAL = 10 ** 6;
 
-    int withDrawFeeDeno = 1000;
-    int withDrawFeeNume = 2;
+    int withdrawFeeDeno = 1000;
+    int withdrawFeeNume = 2;
 
     constructor() {
         owner = msg.sender;
@@ -49,7 +49,7 @@ contract Optimistic  {
         test = true;
         USDCProtocol = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
         optionManager = OptionManager(0x42715969A90b18d10969e8D0395213fC31fD0a3c);
-        liquidityPoolManager = LiquidityPoolManager(0x6A8497f47431C300730391C60e95E137689062f0);
+        liquidityPoolManager = LiquidityPoolManager(0x62e3b8534688a9050C21c95feD884094049A64AD);
         priceProvider = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
     }
 
@@ -61,6 +61,11 @@ contract Optimistic  {
     modifier isStarted() {
         require(epochId >= 1, "not stated.");
         _;
+    }
+
+    function setWithdrawFee(int _withdrawFeeDeno, int _withdrawFeeNume) public isOwner {
+        withdrawFeeDeno = _withdrawFeeDeno;
+        withdrawFeeNume = _withdrawFeeNume;
     }
 
     function getTraderProfitPool(address account) public view returns(int) {
@@ -116,7 +121,7 @@ contract Optimistic  {
     function traderWithdraw(int withdrawAmount) public isStarted {
         int traderAvaliableBalance = optionManager.getTraderAvaliableBalance(msg.sender);
         require (traderAvaliableBalance >= withdrawAmount, "insufficient profit.");
-        int fees = withdrawAmount * withDrawFeeNume / withDrawFeeDeno;
+        int fees = withdrawAmount * withdrawFeeNume / withdrawFeeDeno;
         optimisticBalance += fees;
         if (transferUSDC) {
             bool success = USDCProtocol.transfer(msg.sender, uint(withdrawAmount - fees));
@@ -146,7 +151,7 @@ contract Optimistic  {
     function investorActualWithDraw(int withdrawAmount) public {
         int withdrawPoolAmount = liquidityPoolManager.getWithdrawAmount(msg.sender);
         require (withdrawPoolAmount >= withdrawAmount, "insufficient balance.");
-        int fees = withdrawAmount * withDrawFeeNume / withDrawFeeDeno;
+        int fees = withdrawAmount * withdrawFeeNume / withdrawFeeDeno;
         optimisticBalance += fees;
         if (transferUSDC) {
             bool success = USDCProtocol.transfer(msg.sender, uint(withdrawAmount - fees));
