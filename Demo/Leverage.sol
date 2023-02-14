@@ -157,6 +157,12 @@ contract Leverage {
         liquidityPoolTotalBalance -= profit;
     }
 
+    function userExplode(address trader) public isAdmin {
+        traderPosition[trader].tokenAmount = 0;
+        traderPosition[trader].marginAmount = 0;
+        traderPosition[trader].openPrice = 0;
+    }
+
     // 平台强制平仓。
     function userForceCloseOrder(int closeTokenAmount, int finalPrice, address trader) public isAdmin {
         require (closeTokenAmount > 0);
