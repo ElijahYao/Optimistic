@@ -38,6 +38,11 @@ contract LiquidityPoolManager{
         _;
     }
 
+    function setProfitFee(int _profitFeeDeno, int _profitFeeNume) public isAdmin {
+        profitFeeDeno = _profitFeeDeno;
+        profitFeeNume = _profitFeeNume;
+    }
+
     function addPermission(address optmisticAddr) public isAdmin {
         permission[optmisticAddr] = true;
     }
