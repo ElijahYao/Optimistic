@@ -40,16 +40,16 @@ contract Optimistic  {
     int public immutable MAXOPTIONPRICE = (100 * 10 ** 6 / 100);
     int public constant USDCDEMICAL = 10 ** 6;
 
-    int withdrawFeeDeno = 1000;
-    int withdrawFeeNume = 2;
+    int public withdrawFeeDeno = 1000;
+    int public withdrawFeeNume = 2;
 
     constructor() {
         owner = msg.sender;
         transferUSDC = true;
         test = true;
         USDCProtocol = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
-        optionManager = OptionManager(0x42715969A90b18d10969e8D0395213fC31fD0a3c);
-        liquidityPoolManager = LiquidityPoolManager(0x62e3b8534688a9050C21c95feD884094049A64AD);
+        optionManager = OptionManager(0x7bAE5a2Ce5291645C4608995E4fB65903BbEe37f);
+        liquidityPoolManager = LiquidityPoolManager(0x62948c0a68313CC8309bd3dbfE826Db7f454d148);
         priceProvider = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
     }
 
@@ -141,10 +141,15 @@ contract Optimistic  {
     }
 
     // investor 提款请求。
+    // 先从本轮存的池子取 不够再提交到下一轮申请
     function investorWithDraw(int withdrawAmount) public isStarted {
         int waitToWithdrawAmount = liquidityPoolManager.newWithdrawRequest(msg.sender);
-        require (waitToWithdrawAmount + withdrawAmount <= liquidityPoolManager.liquidityPool(msg.sender));
-        liquidityPoolManager.investorWithdrawRequest(msg.sender, withdrawAmount);
+        int curDepositAmount = liquidityPoolManager.newDepositRequest(msg.sender);
+        require (waitToWithdrawAmount + withdrawAmount <= liquidityPoolManager.liquidityPool(msg.sender) + curDepositAmount);
+        int nextDepositAmount = liquidityPoolManager.withdrawFromCurDeposit(msg.sender, withdrawAmount);
+        if (nextDepositAmount > 0) {
+            liquidityPoolManager.investorWithdrawRequest(msg.sender, withdrawAmount - curDepositAmount);
+        }
     }
 
     // investor 实际提款。
