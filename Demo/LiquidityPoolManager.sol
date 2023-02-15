@@ -12,6 +12,7 @@ contract LiquidityPoolManager{
 
     int public totalBalance = 0;                            // 资金池 USDC 数量
     int public curEpochLockedBalance = 0;                   // 当前交易周期锁定 USDC 数量
+    int public totalProfit = 0;                             // lp总盈亏
 
     address[] investors;                                    // 当前交易周期 LP 列表
     address[] newDepositors;                                // 当前交易周期新存款者列表
@@ -21,8 +22,8 @@ contract LiquidityPoolManager{
     mapping (address => bool) public permission;
     address public admin;
 
-    int profitFeeDeno = 100;
-    int profitFeeNume = 2;
+    int public profitFeeDeno = 100;
+    int public profitFeeNume = 2;
 
     constructor() {
         admin = msg.sender; 
@@ -64,6 +65,24 @@ contract LiquidityPoolManager{
     function getWithdrawAmount(address investor) public view returns (int) {
         return investorsWithdrawPool[investor];
     }
+
+    // 从本轮存款提款，返回剩余未提取金额
+    function withdrawFromCurDeposit(address investor, int withdrawAmount) external isOptimistic returns(int) {
+        if (newDepositRequest[investor] <= 0) {
+            return withdrawAmount;
+        }
+        int curDepositAmount = newDepositRequest[investor];
+        if (withdrawAmount <= curDepositAmount) {
+            investorsWithdrawPool[investor] += withdrawAmount;
+            newDepositRequest[investor] -= withdrawAmount;
+            return 0;
+        } else {
+            int withdraw = newDepositRequest[investor];
+            investorsWithdrawPool[investor] += withdraw;
+            delete newDepositRequest[investor];
+            return withdrawAmount - withdraw;
+        }
+    } 
 
     function investorDeposit(address investor, int investAmount) external isOptimistic {
         if (newDepositRequest[investor] == 0) {
@@ -110,6 +129,7 @@ contract LiquidityPoolManager{
             fees = curEpochTotalProfit * profitFeeNume / profitFeeDeno;
             curEpochTotalProfit -= fees;
         }
+        totalProfit += curEpochTotalProfit;
         for (uint i = 0; i < investors.length; ++i) {
             address investor = investors[i];
             if (liquidityPool[investor] == 0) {
@@ -125,6 +145,9 @@ contract LiquidityPoolManager{
                 if (liquidityPool[investor] >= newWithdrawRequest[investor]) {
                     investorsWithdrawPool[investor] += newWithdrawRequest[investor];
                     liquidityPool[investor] -= newWithdrawRequest[investor];
+                } else {
+                    investorsWithdrawPool[investor] += liquidityPool[investor];
+                    liquidityPool[investor] = 0;
                 }
                 delete newWithdrawRequest[investor];
             }
