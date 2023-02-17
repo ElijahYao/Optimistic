@@ -23,8 +23,7 @@ contract LeverageToken {
     bool isStarted;
 
     int public constant oraclePriceDemical = 10 ** 2;
-    int public constant wethDemical = 10 ** 18;
-    int public constant gweiDemical = 10 ** 10;
+    int public constant gweiDemical = 10 ** 9;
 
     // Trader 
     mapping (address => int) public userBalance;
@@ -77,9 +76,9 @@ contract LeverageToken {
     // 获取 Token 的价格, 10^6 
     function getTokenPrice() public view returns (int) {
         if (!isStarted) {
-            return 1 * wethDemical * gweiDemical;
+            return 1 * gweiDemical;
         }
-        return liquidityPoolTotalBalance * wethDemical / totalTokenAmount;
+        return liquidityPoolTotalBalance * gweiDemical / totalTokenAmount;
     }
 
     function getUserBalance(address user) public view returns (int) {
@@ -109,7 +108,10 @@ contract LeverageToken {
     }
 
     // 用户开空仓。
-    function userOpenOrder(int marginAmount, int leverage) public {
+    // marginAmount: ETH 数量, 单位 GWEI
+    // leveage: 杠杆倍数
+    // 1张面值: 0.01 USDT
+    function userOpenOrder(int marginAmount, int leverage, int openPrice) public {
         require(marginAmount > 0, "invalid marginAmount");
         require(leverage > 0, "invalid leverage");
         require(liquidityPoolTotalBalance - liquidityPoolLockedBalance >= marginAmount * leverage, "insufficient liquidity supply.");        
@@ -117,24 +119,40 @@ contract LeverageToken {
 
         userBalance[msg.sender] -= marginAmount;
 
-        int currentOpenPrice = getFuturePrice();
-        int currentTokenAmount = marginAmount * leverage / currentOpenPrice;
+        // int currentOpenPrice = getFuturePrice(); 
+        int currentOpenPrice = openPrice; // for test 
+        int currentTokenAmount = marginAmount * leverage * currentOpenPrice / (10 ** 9);
+
+        console.log("currentOpenPrice ", uint(currentOpenPrice));
+        console.log("currentTokenAmount", uint(currentTokenAmount));
 
         int oldOpenPrice = traderPosition[msg.sender].openPrice;
         int oldTokenAmount = traderPosition[msg.sender].tokenAmount;
         int oldMarginAmount = traderPosition[msg.sender].marginAmount;
 
-        traderPosition[msg.sender].openPrice = (oldOpenPrice * oldTokenAmount + currentOpenPrice * currentTokenAmount) / (oldTokenAmount + currentTokenAmount);
+        if (oldTokenAmount == 0) {
+            traderPosition[msg.sender].openPrice = currentOpenPrice;
+        } else {
+            traderPosition[msg.sender].openPrice = (currentOpenPrice * currentTokenAmount + oldOpenPrice * oldTokenAmount) / (currentTokenAmount + oldTokenAmount);
+        }
+
         traderPosition[msg.sender].tokenAmount = oldTokenAmount + currentTokenAmount;
         traderPosition[msg.sender].marginAmount = oldMarginAmount + marginAmount;
 
-        liquidityPoolLockedBalance += traderPosition[msg.sender].openPrice * traderPosition[msg.sender].tokenAmount - oldOpenPrice * oldTokenAmount;
+        int maxProfit = traderPosition[msg.sender].tokenAmount * (10 ** 9) / traderPosition[msg.sender].openPrice;
 
-        traderAddress.push(msg.sender);
+        // LP 增加的数额
+        int incLockedBalance = oldTokenAmount == 0 ? maxProfit : maxProfit - oldTokenAmount * (10 ** 9) / oldOpenPrice;
+        console.log("maxProfit ", uint(maxProfit));
+        console.log("incLockedBalance", uint(incLockedBalance));
+
+        // 仓位最大利润计算
+        liquidityPoolLockedBalance += incLockedBalance;
     }
 
     // 用户平空仓。
-    function userCloseOrder(int closeTokenAmount) public {
+    // closeTokenAmount: 平仓数量
+    function userCloseOrder(int closeTokenAmount, int closePrice) public {
         require (closeTokenAmount > 0);
         address trader = msg.sender; 
 
@@ -143,50 +161,55 @@ contract LeverageToken {
         int oldOpenPrice = traderPosition[trader].openPrice;
         int oldTokenAmount = traderPosition[trader].tokenAmount;
         int oldMarginAmount = traderPosition[trader].marginAmount;
+        int oldMaxProfit = oldTokenAmount * (10 ** 9) / traderPosition[msg.sender].openPrice;
         
-        int currentPrice = getFuturePrice();
-        int profit = (traderPosition[trader].openPrice - currentPrice) * closeTokenAmount / oraclePriceDemical;
+        //int currentPrice = getFuturePrice();
+        int currentPrice = closePrice;  // for test.
+        int profit = traderPosition[msg.sender].tokenAmount * (10 ** 9) / traderPosition[msg.sender].openPrice - traderPosition[msg.sender].tokenAmount * (10 ** 9) / currentPrice;
 
-        traderPosition[trader].tokenAmount = oldTokenAmount - closeTokenAmount;
-        traderPosition[trader].marginAmount = oldMarginAmount * (oldTokenAmount - closeTokenAmount) / oldTokenAmount;
+        if (profit > 0) {
+            console.log("Position Profit +", uint(profit));
+        } else {
+            console.log("Position Profit -", uint(-profit));
+        }
+        console.log("Position MarginAmount", uint(traderPosition[trader].marginAmount));
 
-        int movedMariginAmount = oldMarginAmount - traderPosition[trader].marginAmount;
+        // 判断是否爆仓
+        if (profit + traderPosition[trader].marginAmount <= 0) {
+            userExplode(trader);
+            liquidityPoolLockedBalance -= oldMaxProfit;
+            liquidityPoolTotalBalance += oldMarginAmount;
+        } else {
+            traderPosition[trader].tokenAmount = oldTokenAmount - closeTokenAmount;
+            traderPosition[trader].marginAmount = oldMarginAmount * (oldTokenAmount - closeTokenAmount) / oldTokenAmount;
+            // 平仓的利润
+            int value = closeTokenAmount * (10 ** 9) / traderPosition[msg.sender].openPrice - closeTokenAmount * (10 ** 9) / currentPrice;
+            console.log("Close order token amount ", uint(closeTokenAmount));
+            if (value >= 0) {
+                console.log("Close order gain positive:  +", uint(value));
+            } else {
+                console.log("Close order gain negative:  -", uint(-value));
+            }
+            int movedMariginAmount = oldMarginAmount - traderPosition[trader].marginAmount;
+            int incBalance = movedMariginAmount + value; 
 
-        require (movedMariginAmount + profit > 0);
-        userBalance[trader] += movedMariginAmount + profit;
+            userBalance[trader] += incBalance;
 
-        liquidityPoolLockedBalance -= closeTokenAmount * oldOpenPrice;
-        liquidityPoolTotalBalance -= profit;
+            int curMaxProfit = traderPosition[trader].tokenAmount * (10 ** 9) / traderPosition[msg.sender].openPrice;
+
+            liquidityPoolLockedBalance -= oldMaxProfit - curMaxProfit;
+            liquidityPoolTotalBalance -= value;
+
+            if (traderPosition[trader].tokenAmount == 0) {
+                traderPosition[trader].openPrice = 0;
+            }
+        }
     }
 
     function userExplode(address trader) public isAdmin {
         traderPosition[trader].tokenAmount = 0;
         traderPosition[trader].marginAmount = 0;
         traderPosition[trader].openPrice = 0;
-    }
-
-    // 平台强制平仓。
-    function userForceCloseOrder(int closeTokenAmount, int finalPrice, address trader) public isAdmin {
-        require (closeTokenAmount > 0);
-        require (traderPosition[trader].tokenAmount >= closeTokenAmount);
-
-        int oldOpenPrice = traderPosition[trader].openPrice;
-        int oldTokenAmount = traderPosition[trader].tokenAmount;
-        int oldMarginAmount = traderPosition[trader].marginAmount;
-        
-        int currentPrice = finalPrice;
-        int profit = (traderPosition[trader].openPrice - currentPrice) * closeTokenAmount;
-
-        traderPosition[trader].tokenAmount = oldTokenAmount - closeTokenAmount;
-        traderPosition[trader].marginAmount = oldMarginAmount * (oldTokenAmount - closeTokenAmount) / oldTokenAmount;
-
-        int movedMariginAmount = oldMarginAmount - traderPosition[trader].marginAmount;
-
-        require (movedMariginAmount + profit > 0);
-        userBalance[trader] += movedMariginAmount + profit;
-
-        liquidityPoolLockedBalance -= closeTokenAmount * oldOpenPrice;
-        liquidityPoolTotalBalance -= profit;
     }
 
     function lpDeposit(int wethAmount) public {
