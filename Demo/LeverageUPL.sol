@@ -13,8 +13,7 @@ interface USDC {
     function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
 }
 
-contract LeverageToken {
-
+contract LeverageUPL {
     // Global
     address public owner;
     bool transferUSDC;
@@ -35,6 +34,9 @@ contract LeverageToken {
 
     mapping (address => Position) public traderPosition;
     address[] public traderAddress;
+
+    int public globalTokenAmount = 0;
+    int public globalTokenValue = 0;
     
     // LP
     int public liquidityPoolTotalBalance;
@@ -54,31 +56,29 @@ contract LeverageToken {
         _;
     }
 
+    // 计算全局的未实现盈亏
+    function getGlobalUPL() public view returns (int) {
+        // 所有仓位的开仓均价 
+        int curFuturePrice = getFuturePrice();
+        return curFuturePrice * globalTokenAmount - globalTokenValue;
+    }
+
     function createRandom(uint number) private view returns(int){
         return int(uint(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender))) % number);
     }
 
     // 期货价格保留两位小数
     function getFuturePrice() public view returns (int) {
-        // (
-        //     , 
-        //     int price,
-        //     ,
-        //     uint timeStamp,
-        // ) = priceProvider.latestRoundData();
-        // // If the round is not complete yet, timestamp is 0
-        // require(timeStamp > 0, "Round not complete");
-        //return price;
         return (1450 + createRandom(50)) * (10 ** 2) + createRandom(99);
     }
     
-
     // 获取 Token 的价格, 10^6 
     function getTokenPrice() public view returns (int) {
         if (!isStarted) {
             return 1 * usdcDemical;
         }
-        return liquidityPoolTotalBalance * usdcDemical / totalTokenAmount;
+        int globalUPL = getGlobalUPL();
+        return (liquidityPoolTotalBalance - globalUPL) * usdcDemical / totalTokenAmount;
     }
 
     function getUserBalance(address user) public view returns (int) {
@@ -127,6 +127,10 @@ contract LeverageToken {
         traderPosition[msg.sender].tokenAmount = oldTokenAmount + currentTokenAmount;
         traderPosition[msg.sender].marginAmount = oldMarginAmount + marginAmount;
 
+        // 处理全局 token 数量 + 全局 open price 计算
+        globalTokenAmount += currentTokenAmount;
+        globalTokenValue += traderPosition[msg.sender].openPrice * traderPosition[msg.sender].tokenAmount - oldOpenPrice * oldTokenAmount;
+
         liquidityPoolLockedBalance += traderPosition[msg.sender].openPrice * traderPosition[msg.sender].tokenAmount - oldOpenPrice * oldTokenAmount;
 
         traderAddress.push(msg.sender);
@@ -154,6 +158,9 @@ contract LeverageToken {
         require (movedMariginAmount + profit > 0);
         userBalance[trader] += movedMariginAmount + profit;
 
+        globalTokenAmount -= closeTokenAmount;
+        globalTokenValue -= closeTokenAmount * oldOpenPrice;
+
         liquidityPoolLockedBalance -= closeTokenAmount * oldOpenPrice;
         liquidityPoolTotalBalance -= profit;
     }
@@ -162,6 +169,9 @@ contract LeverageToken {
         traderPosition[trader].tokenAmount = 0;
         traderPosition[trader].marginAmount = 0;
         traderPosition[trader].openPrice = 0;
+
+        globalTokenAmount -= traderPosition[trader].tokenAmount;
+        globalTokenValue -= traderPosition[trader].tokenAmount * traderPosition[trader].openPrice;
     }
 
     // 平台强制平仓。
