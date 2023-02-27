@@ -165,6 +165,21 @@ contract LeverageUPL {
         liquidityPoolTotalBalance -= profit;
     }
 
+    // 用户增加保证金。
+    function userAdjustMarginAmount(int marginAmount, bool inc) public {
+        require (marginAmount > 0, "invalid margin amount");
+        require (traderPosition[msg.sender].tokenAmount > 0, "invalid user position");
+        if (inc) {
+            require (userBalance[msg.sender] >= marginAmount);
+            userBalance[msg.sender] -= marginAmount;
+            traderPosition[msg.sender].marginAmount += marginAmount;
+        } else {
+            require (traderPosition[msg.sender].marginAmount >= 0);
+            traderPosition[msg.sender].marginAmount -= marginAmount;
+            userBalance[msg.sender] += marginAmount;
+        }
+    }
+
     function userExplode(address trader) public isAdmin {
         traderPosition[trader].tokenAmount = 0;
         traderPosition[trader].marginAmount = 0;
