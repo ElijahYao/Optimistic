@@ -41,6 +41,7 @@ contract LeverageUPL {
     // LP
     int public liquidityPoolTotalBalance;
     int public liquidityPoolLockedBalance;
+    int public liquidityPoolTotalProfit = 0;
     mapping (address => int) public tokenBalance;
     int public totalTokenAmount = 0;
 
@@ -163,6 +164,7 @@ contract LeverageUPL {
 
         liquidityPoolLockedBalance -= closeTokenAmount * oldOpenPrice;
         liquidityPoolTotalBalance -= profit;
+        liquidityPoolTotalProfit -= profit;
     }
 
     // 用户增加保证金。
@@ -211,6 +213,7 @@ contract LeverageUPL {
 
         liquidityPoolLockedBalance -= closeTokenAmount * oldOpenPrice;
         liquidityPoolTotalBalance -= profit;
+        liquidityPoolTotalProfit -= profit;
     }
 
     function lpDeposit(int usdcAmount) public {
