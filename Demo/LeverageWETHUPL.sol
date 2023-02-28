@@ -42,7 +42,9 @@ contract LeverageToken {
     // LP
     int public liquidityPoolTotalBalance;
     int public liquidityPoolLockedBalance;
+    int public liquidityPoolTotalProfit = 0;
     mapping (address => int) public tokenBalance;
+    mapping (address => int) public lpDepositAmount;
     int public totalTokenAmount = 0;
 
     constructor() {
@@ -196,6 +198,7 @@ contract LeverageToken {
             userExplode(trader);
             liquidityPoolLockedBalance -= oldMaxProfit;
             liquidityPoolTotalBalance += oldMarginAmount;
+            liquidityPoolTotalProfit += oldMarginAmount;
             // 爆仓默认把所有仓位都平
             globalTokenAmount -= oldTokenAmount;
             globalTokenValue -= oldTokenAmount * oldOpenPrice;
@@ -219,6 +222,7 @@ contract LeverageToken {
 
             liquidityPoolLockedBalance -= oldMaxProfit - curMaxProfit;
             liquidityPoolTotalBalance -= value;
+            liquidityPoolTotalProfit -= value;
 
             globalTokenAmount -= closeTokenAmount;
             globalTokenValue -= closeTokenAmount * oldOpenPrice;
@@ -246,6 +250,7 @@ contract LeverageToken {
 
         // 后续使用已实现盈亏进行计算
         liquidityPoolTotalBalance += wethAmount;
+        lpDepositAmount[msg.sender] += wethAmount;
         int userTokenInc = wethAmount * gweiDemical / tokenPrice;
 
         console.log("wethAmount ", uint(wethAmount));
@@ -273,6 +278,7 @@ contract LeverageToken {
             require (success, "Transfer WETH failed");
         }
         liquidityPoolTotalBalance -= withdrawAmount;
+        lpDepositAmount[msg.sender] -= withdrawAmount;
         tokenBalance[msg.sender] -= tokenAmount;
         totalTokenAmount -= tokenAmount;
     }

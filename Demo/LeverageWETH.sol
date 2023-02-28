@@ -39,12 +39,14 @@ contract LeverageToken {
     // LP
     int public liquidityPoolTotalBalance;
     int public liquidityPoolLockedBalance;
+    int public liquidityPoolTotalProfit = 0;
     mapping (address => int) public tokenBalance;
+    mapping (address => int) public lpDepositAmount;
     int public totalTokenAmount = 0;
 
     constructor() {
         owner = msg.sender;
-        transferWETH = false; 
+        transferWETH = true; 
         priceProvider = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
         WETHToken = ERC20(0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6);
     }
@@ -108,7 +110,7 @@ contract LeverageToken {
     }
 
     // 用户开空仓。
-    // marginAmount: ETH 数量, 单位 GWEI
+    // marginAmount: ETH 数量, 单位 WEI
     // leveage: 杠杆倍数
     // 1张面值: 0.01 USDT
     function userOpenOrder(int marginAmount, int leverage, int openPrice) public {
@@ -179,6 +181,7 @@ contract LeverageToken {
             userExplode(trader);
             liquidityPoolLockedBalance -= oldMaxProfit;
             liquidityPoolTotalBalance += oldMarginAmount;
+            liquidityPoolTotalProfit += oldMarginAmount;
         } else {
             traderPosition[trader].tokenAmount = oldTokenAmount - closeTokenAmount;
             traderPosition[trader].marginAmount = oldMarginAmount * (oldTokenAmount - closeTokenAmount) / oldTokenAmount;
@@ -199,6 +202,7 @@ contract LeverageToken {
 
             liquidityPoolLockedBalance -= oldMaxProfit - curMaxProfit;
             liquidityPoolTotalBalance -= value;
+            liquidityPoolTotalProfit -= value;
 
             if (traderPosition[trader].tokenAmount == 0) {
                 traderPosition[trader].openPrice = 0;
@@ -223,6 +227,7 @@ contract LeverageToken {
 
         // 后续使用已实现盈亏进行计算
         liquidityPoolTotalBalance += wethAmount;
+        lpDepositAmount[msg.sender] += wethAmount;
         int userTokenInc = wethAmount * gweiDemical / tokenPrice;
 
         console.log("wethAmount ", uint(wethAmount));
@@ -250,6 +255,7 @@ contract LeverageToken {
             require (success, "Transfer WETH failed");
         }
         liquidityPoolTotalBalance -= withdrawAmount;
+        lpDepositAmount[msg.sender] -= withdrawAmount;
         tokenBalance[msg.sender] -= tokenAmount;
         totalTokenAmount -= tokenAmount;
     }
