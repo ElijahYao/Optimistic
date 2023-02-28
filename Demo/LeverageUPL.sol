@@ -76,7 +76,7 @@ contract LeverageUPL {
     
     // 获取 Token 的价格, 10^6 
     function getTokenPrice() public view returns (int) {
-        if (!isStarted) {
+        if (!isStarted || totalTokenAmount == 0) {
             return 1 * usdcDemical;
         }
         int globalUPL = getGlobalUPL();
