@@ -43,6 +43,7 @@ contract LeverageUPL {
     int public liquidityPoolLockedBalance;
     int public liquidityPoolTotalProfit = 0;
     mapping (address => int) public tokenBalance;
+    mapping (address => int) public lpDepositAmount;
     int public totalTokenAmount = 0;
 
     constructor() {
@@ -227,6 +228,7 @@ contract LeverageUPL {
 
         // 后续使用已实现盈亏进行计算
         liquidityPoolTotalBalance += usdcAmount;
+        lpDepositAmount[msg.sender] += usdcAmount;
         int userTokenInc = usdcAmount * usdcDemical / tokenPrice;
 
         console.log("usdcAmount ", uint(usdcAmount));
@@ -254,6 +256,7 @@ contract LeverageUPL {
             require (success, "Transfer USDC failed");
         }
         liquidityPoolTotalBalance -= withdrawAmount;
+        lpDepositAmount[msg.sender] -= usdcAmount;
         tokenBalance[msg.sender] -= tokenAmount;
         totalTokenAmount -= tokenAmount;
     }
