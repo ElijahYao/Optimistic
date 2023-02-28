@@ -134,8 +134,8 @@ contract LeverageToken {
 
         userBalance[msg.sender] -= marginAmount;
 
-        int currentOpenPrice = getFuturePrice(); 
-        // int currentOpenPrice = openPrice; // for test 
+        //int currentOpenPrice = getFuturePrice(); 
+        int currentOpenPrice = openPrice; // for test 
         int currentTokenAmount = marginAmount * leverage * currentOpenPrice / (10 ** 9);
 
         console.log("currentOpenPrice ", uint(currentOpenPrice));
@@ -148,7 +148,8 @@ contract LeverageToken {
         if (oldTokenAmount == 0) {
             traderPosition[msg.sender].openPrice = currentOpenPrice;
         } else {
-            traderPosition[msg.sender].openPrice = (currentOpenPrice * currentTokenAmount + oldOpenPrice * oldTokenAmount) / (currentTokenAmount + oldTokenAmount);
+            // traderPosition[msg.sender].openPrice = (currentOpenPrice * currentTokenAmount + oldOpenPrice * oldTokenAmount) / (currentTokenAmount + oldTokenAmount);
+            traderPosition[msg.sender].openPrice = (currentTokenAmount + oldTokenAmount) * currentOpenPrice * oldOpenPrice / (currentTokenAmount * oldOpenPrice + oldTokenAmount * currentOpenPrice);
         }
 
         traderPosition[msg.sender].tokenAmount = oldTokenAmount + currentTokenAmount;
