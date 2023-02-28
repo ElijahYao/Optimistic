@@ -256,7 +256,7 @@ contract LeverageUPL {
             require (success, "Transfer USDC failed");
         }
         liquidityPoolTotalBalance -= withdrawAmount;
-        lpDepositAmount[msg.sender] -= usdcAmount;
+        lpDepositAmount[msg.sender] -= withdrawAmount;
         tokenBalance[msg.sender] -= tokenAmount;
         totalTokenAmount -= tokenAmount;
     }
