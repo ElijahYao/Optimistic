@@ -35,6 +35,9 @@ contract LeverageToken {
 
     mapping (address => Position) public traderPosition;
     address[] public traderAddress;
+
+    int public globalTokenAmount = 0;
+    int public globalTokenValue = 0;
     
     // LP
     int public liquidityPoolTotalBalance;
@@ -71,14 +74,24 @@ contract LeverageToken {
         //return price;
         return (1450 + createRandom(50)) * (10 ** 2) + createRandom(99);
     }
+
+
+    function getGlobalUPL() public view returns (int) {
+
+        int globalOpenPrice = globalTokenValue / globalTokenAmount;
+        int currentPrice = getFuturePrice();
+        console.log("globalOpenPrice ", uint(globalOpenPrice));
+        int profit = globalTokenAmount * (10 ** 9) / globalOpenPrice - globalTokenAmount * (10 ** 9) / currentPrice;
+        return profit;
+    }
     
 
     // 获取 Token 的价格, 10^6 
     function getTokenPrice() public view returns (int) {
-        if (!isStarted) {
+        if (!isStarted || totalTokenAmount == 0) {
             return 1 * gweiDemical;
         }
-        return liquidityPoolTotalBalance * gweiDemical / totalTokenAmount;
+        return (liquidityPoolTotalBalance - getGlobalUPL()) * gweiDemical / totalTokenAmount;
     }
 
     function getUserBalance(address user) public view returns (int) {
@@ -119,8 +132,8 @@ contract LeverageToken {
 
         userBalance[msg.sender] -= marginAmount;
 
-        // int currentOpenPrice = getFuturePrice(); 
-        int currentOpenPrice = openPrice; // for test 
+        int currentOpenPrice = getFuturePrice(); 
+        // int currentOpenPrice = openPrice; // for test 
         int currentTokenAmount = marginAmount * leverage * currentOpenPrice / (10 ** 9);
 
         console.log("currentOpenPrice ", uint(currentOpenPrice));
@@ -141,10 +154,14 @@ contract LeverageToken {
 
         int maxProfit = traderPosition[msg.sender].tokenAmount * (10 ** 9) / traderPosition[msg.sender].openPrice;
 
+
         // LP 增加的数额
         int incLockedBalance = oldTokenAmount == 0 ? maxProfit : maxProfit - oldTokenAmount * (10 ** 9) / oldOpenPrice;
         console.log("maxProfit ", uint(maxProfit));
         console.log("incLockedBalance", uint(incLockedBalance));
+
+        globalTokenAmount += currentTokenAmount;
+        globalTokenValue += traderPosition[msg.sender].openPrice * traderPosition[msg.sender].tokenAmount - oldOpenPrice * oldTokenAmount;
 
         // 仓位最大利润计算
         liquidityPoolLockedBalance += incLockedBalance;
@@ -163,8 +180,8 @@ contract LeverageToken {
         int oldMarginAmount = traderPosition[trader].marginAmount;
         int oldMaxProfit = oldTokenAmount * (10 ** 9) / traderPosition[msg.sender].openPrice;
         
-        //int currentPrice = getFuturePrice();
-        int currentPrice = closePrice;  // for test.
+        int currentPrice = getFuturePrice();
+        // int currentPrice = closePrice;  // for test.
         int profit = traderPosition[msg.sender].tokenAmount * (10 ** 9) / traderPosition[msg.sender].openPrice - traderPosition[msg.sender].tokenAmount * (10 ** 9) / currentPrice;
 
         if (profit > 0) {
@@ -179,6 +196,9 @@ contract LeverageToken {
             userExplode(trader);
             liquidityPoolLockedBalance -= oldMaxProfit;
             liquidityPoolTotalBalance += oldMarginAmount;
+            // 爆仓默认把所有仓位都平
+            globalTokenAmount -= oldTokenAmount;
+            globalTokenValue -= oldTokenAmount * oldOpenPrice;
         } else {
             traderPosition[trader].tokenAmount = oldTokenAmount - closeTokenAmount;
             traderPosition[trader].marginAmount = oldMarginAmount * (oldTokenAmount - closeTokenAmount) / oldTokenAmount;
@@ -200,6 +220,9 @@ contract LeverageToken {
             liquidityPoolLockedBalance -= oldMaxProfit - curMaxProfit;
             liquidityPoolTotalBalance -= value;
 
+            globalTokenAmount -= closeTokenAmount;
+            globalTokenValue -= closeTokenAmount * oldOpenPrice;
+
             if (traderPosition[trader].tokenAmount == 0) {
                 traderPosition[trader].openPrice = 0;
             }
@@ -213,7 +236,7 @@ contract LeverageToken {
     }
 
     function lpDeposit(int wethAmount) public {
-        require (wethAmount > 0);
+        require (wethAmount > 0, "invalid weth amount");
         if (transferWETH) {
             bool success = WETHToken.transferFrom(msg.sender, address(this), uint(wethAmount));
             require (success, "Transfer WETH failed");
