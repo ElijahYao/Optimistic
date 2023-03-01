@@ -21,7 +21,6 @@ contract LeverageUPL {
     AggregatorV3Interface internal priceProvider;
     bool isStarted;
 
-    int public constant oraclePriceDemical = 10 ** 2;
     int public constant usdcDemical = 10 ** 6;
 
     // Trader 
@@ -154,7 +153,7 @@ contract LeverageUPL {
         int oldMarginAmount = traderPosition[trader].marginAmount;
 
         int currentPrice = getFuturePrice();
-        int profit = (traderPosition[trader].openPrice - currentPrice) * closeTokenAmount / oraclePriceDemical;
+        int profit = (traderPosition[trader].openPrice - currentPrice) * closeTokenAmount;
 
         traderPosition[trader].tokenAmount = oldTokenAmount - closeTokenAmount;
         traderPosition[trader].marginAmount = oldMarginAmount * (oldTokenAmount - closeTokenAmount) / oldTokenAmount;
