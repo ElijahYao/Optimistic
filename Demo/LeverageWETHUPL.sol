@@ -49,7 +49,7 @@ contract LeverageToken {
 
     constructor() {
         owner = msg.sender;
-        transferWETH = false; 
+        transferWETH = true; 
         priceProvider = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
         WETHToken = ERC20(0xB4FBF271143F4FBf7B91A5ded31805e42b2208d6);
     }
@@ -65,20 +65,20 @@ contract LeverageToken {
 
     // 期货价格保留两位小数
     function getFuturePrice() public view returns (int) {
-        // (
-        //     , 
-        //     int price,
-        //     ,
-        //     uint timeStamp,
-        // ) = priceProvider.latestRoundData();
-        // // If the round is not complete yet, timestamp is 0
-        // require(timeStamp > 0, "Round not complete");
-        //return price;
-        return (1450 + createRandom(50)) * (10 ** 2) + createRandom(99);
+        (
+             , 
+             int price,
+             ,
+             ,
+        ) = priceProvider.latestRoundData();
+        return price / (10 ** 6);
     }
 
 
     function getGlobalUPL() public view returns (int) {
+        if (globalTokenAmount == 0) {
+            return 0;
+        }
 
         int globalOpenPrice = globalTokenValue / globalTokenAmount;
         int currentPrice = getFuturePrice();
@@ -105,7 +105,7 @@ contract LeverageToken {
     function userDeposit(int wethAmount) public {
         require (wethAmount >= 0, "Negative WETH amount");
         if (transferWETH) {
-            bool success = WETHToken.transferFrom(msg.sender, address(this), uint(wethAmount));
+            bool success = WETHToken.transferFrom(msg.sender, address(this), uint(wethAmount * gweiDemical));
             require (success, "Transfer WETH failed");
         }
         userBalance[msg.sender] += wethAmount;
@@ -116,7 +116,7 @@ contract LeverageToken {
         require (wethAmount >= 0, "Negative WETH amount");
         require (userBalance[msg.sender] >= wethAmount, "Insufficient WETH balance");
         if (transferWETH) {
-            bool success = WETHToken.transfer(msg.sender, uint(wethAmount));
+            bool success = WETHToken.transfer(msg.sender, uint(wethAmount * gweiDemical));
             require (success, "Transfer WETH failed");
         }
         userBalance[msg.sender] -= wethAmount;
@@ -126,7 +126,7 @@ contract LeverageToken {
     // marginAmount: ETH 数量, 单位 GWEI
     // leveage: 杠杆倍数
     // 1张面值: 0.01 USDT
-    function userOpenOrder(int marginAmount, int leverage, int openPrice) public {
+    function userOpenOrder(int marginAmount, int leverage) public {
         require(marginAmount > 0, "invalid marginAmount");
         require(leverage > 0, "invalid leverage");
         require(liquidityPoolTotalBalance - liquidityPoolLockedBalance >= marginAmount * leverage, "insufficient liquidity supply.");        
@@ -134,8 +134,7 @@ contract LeverageToken {
 
         userBalance[msg.sender] -= marginAmount;
 
-        //int currentOpenPrice = getFuturePrice(); 
-        int currentOpenPrice = openPrice; // for test 
+        int currentOpenPrice = getFuturePrice();  
         int currentTokenAmount = marginAmount * leverage * currentOpenPrice / (10 ** 9);
 
         console.log("currentOpenPrice ", uint(currentOpenPrice));
@@ -172,7 +171,7 @@ contract LeverageToken {
 
     // 用户平空仓。
     // closeTokenAmount: 平仓数量
-    function userCloseOrder(int closeTokenAmount, int closePrice) public {
+    function userCloseOrder(int closeTokenAmount) public {
         require (closeTokenAmount > 0);
         address trader = msg.sender; 
 
@@ -243,7 +242,7 @@ contract LeverageToken {
     function lpDeposit(int wethAmount) public {
         require (wethAmount > 0, "invalid weth amount");
         if (transferWETH) {
-            bool success = WETHToken.transferFrom(msg.sender, address(this), uint(wethAmount));
+            bool success = WETHToken.transferFrom(msg.sender, address(this), uint(wethAmount * gweiDemical));
             require (success, "Transfer WETH failed");
         }
         // 当第一轮 epoch 未开始的时候, 价格 = 1usdt
@@ -275,7 +274,7 @@ contract LeverageToken {
 
         require (withdrawAmount <= liquidityPoolTotalBalance - liquidityPoolLockedBalance);
         if (transferWETH) {
-            bool success = WETHToken.transfer(msg.sender, uint(withdrawAmount));
+            bool success = WETHToken.transfer(msg.sender, uint(withdrawAmount * gweiDemical));
             require (success, "Transfer WETH failed");
         }
         liquidityPoolTotalBalance -= withdrawAmount;
