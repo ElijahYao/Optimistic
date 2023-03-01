@@ -37,7 +37,7 @@ contract LeverageUPL {
 
     int public globalTokenAmount = 0;
     int public globalTokenValue = 0;
-    
+
     // LP
     int public liquidityPoolTotalBalance;
     int public liquidityPoolLockedBalance;
@@ -46,9 +46,12 @@ contract LeverageUPL {
     mapping (address => int) public lpDepositAmount;
     int public totalTokenAmount = 0;
 
+    event OpenOrder(address indexed _trader, int _openPrice, int _marginAmount, int _leverage);
+    event CloseOrder(address indexed _trader, int _closePrice, int _tokenAmount);
+
     constructor() {
         owner = msg.sender;
-        transferUSDC = false; 
+        transferUSDC = true; 
         priceProvider = AggregatorV3Interface(0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e);
         USDCToken = USDC(0x07865c6E87B9F70255377e024ace6630C1Eaa37F);
     }
@@ -64,16 +67,17 @@ contract LeverageUPL {
         int curFuturePrice = getFuturePrice();
         return curFuturePrice * globalTokenAmount - globalTokenValue;
     }
-
-    function createRandom(uint number) private view returns(int){
-        return int(uint(keccak256(abi.encodePacked(block.timestamp, block.difficulty, msg.sender))) % number);
-    }
-
     // 期货价格保留两位小数
     function getFuturePrice() public view returns (int) {
-        return (1450 + createRandom(50)) * (10 ** 2) + createRandom(99);
+        (
+             , 
+             int price,
+             ,
+             ,
+        ) = priceProvider.latestRoundData();
+        return price / (10 ** 6);
     }
-    
+
     // 获取 Token 的价格, 10^6 
     function getTokenPrice() public view returns (int) {
         if (!isStarted || totalTokenAmount == 0) {
@@ -135,7 +139,7 @@ contract LeverageUPL {
 
         liquidityPoolLockedBalance += traderPosition[msg.sender].openPrice * traderPosition[msg.sender].tokenAmount - oldOpenPrice * oldTokenAmount;
 
-        traderAddress.push(msg.sender);
+        emit OpenOrder(msg.sender, currentOpenPrice, marginAmount, leverage);
     }
 
     // 用户平空仓。
@@ -148,7 +152,7 @@ contract LeverageUPL {
         int oldOpenPrice = traderPosition[trader].openPrice;
         int oldTokenAmount = traderPosition[trader].tokenAmount;
         int oldMarginAmount = traderPosition[trader].marginAmount;
-        
+
         int currentPrice = getFuturePrice();
         int profit = (traderPosition[trader].openPrice - currentPrice) * closeTokenAmount / oraclePriceDemical;
 
@@ -166,6 +170,8 @@ contract LeverageUPL {
         liquidityPoolLockedBalance -= closeTokenAmount * oldOpenPrice;
         liquidityPoolTotalBalance -= profit;
         liquidityPoolTotalProfit -= profit;
+
+        emit CloseOrder(msg.sender, currentPrice, closeTokenAmount);
     }
 
     // 用户增加保证金。
@@ -200,7 +206,7 @@ contract LeverageUPL {
         int oldOpenPrice = traderPosition[trader].openPrice;
         int oldTokenAmount = traderPosition[trader].tokenAmount;
         int oldMarginAmount = traderPosition[trader].marginAmount;
-        
+
         int currentPrice = finalPrice;
         int profit = (traderPosition[trader].openPrice - currentPrice) * closeTokenAmount;
 
@@ -243,7 +249,7 @@ contract LeverageUPL {
         require (isStarted == true); 
         require (tokenAmount > 0);
         require (tokenBalance[msg.sender] >= tokenAmount);
-        
+
         int tokenPrice = getTokenPrice();
         int withdrawAmount = tokenAmount * tokenPrice / usdcDemical;
 
