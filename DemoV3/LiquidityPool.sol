@@ -54,22 +54,20 @@ contract LiquidityPool {
         totalToken -= _tokenAmount;
     }
 
-    function lockLiquidityUSDT(int _usdtAmount) public returns (bool) {
+    function lockLiquidityUSDT(int _usdtAmount) public {
         require (totalUSDT - lockedUSDT >= _usdtAmount, "insufficient USDT liquidity.");
         lockedUSDT += _usdtAmount;
-        return true;
     }
 
-    function unlockLiquidityUSDT(int _usdtAmount) public returns (bool) {
+    function unlockLiquidityUSDT(int _usdtAmount) public {
+        require (_usdtAmount > 0, "invalid USDT amount");
         lockedUSDT -= _usdtAmount;
-        return true;
     }
 
-    function updatePoolUSDT(int _usdtAmount) public returns (bool) {
+    function updatePoolUSDT(int _usdtAmount) public {
+        require (totalUSDT + _usdtAmount >= 0, "invalid USDT amount");
         totalUSDT += _usdtAmount;
-        return true;
     }
-
 
     function lockLiquidityWETH(int _wethAmount) public returns (bool) {
         return true;
