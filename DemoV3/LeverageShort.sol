@@ -88,7 +88,7 @@ contract LeverageShort {
 
         } else {
 
-            int profit = (traderPosition[trader].openPrice - currentPrice) * closeTokenAmount;
+            int traderProfit = (traderPosition[trader].openPrice - currentPrice) * closeTokenAmount;
 
             traderPosition[trader].tokenAmount = oldTokenAmount - closeTokenAmount;
             traderPosition[trader].marginAmount = oldMarginAmount * (oldTokenAmount - closeTokenAmount) / oldTokenAmount;
@@ -99,12 +99,12 @@ contract LeverageShort {
             globalTokenValue -= closeTokenAmount * oldOpenPrice;
 
             liquidityPool.unlockLiquidityUSDT(closeTokenAmount * oldOpenPrice);
-            liquidityPool.updatePoolUSDT(profit);
+            liquidityPool.updatePoolUSDT(-traderProfit);
 
             if (traderPosition[trader].tokenAmount == 0) {
                 resetPosition(trader);
             }
-            return movedMariginAmount + profit;
+            return movedMariginAmount + traderProfit;
         }
     }
 
