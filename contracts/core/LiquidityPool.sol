@@ -18,7 +18,6 @@ contract LiquidityPool {
 
     constructor() {
         owner = msg.sender;
-        totalToken = 0;
     }
 
     /*

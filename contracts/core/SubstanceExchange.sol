@@ -3,7 +3,8 @@ pragma solidity ^0.8.17;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-import "./LeverageShort.sol";
+import "../interfaces/ILeverageShort.sol";
+import "../interfaces/ILiquidityPool.sol";
 
 import "hardhat/console.sol";
 
@@ -21,8 +22,8 @@ interface USDC {
 
 contract SubstanceExchange {
     mapping(address => int) public traderUSDTBalance;
-    LeverageShort public immutable leverageShort;
-    LiquidityPool public immutable liquidityPool;
+    ILeverageShort public immutable leverageShort;
+    ILiquidityPool public immutable liquidityPool;
 
     USDC public USDCToken;
 
@@ -30,9 +31,9 @@ contract SubstanceExchange {
 
     int public constant usdcDemical = 10 ** 6;
 
-    constructor() {
-        liquidityPool = LiquidityPool(0xd9145CCE52D386f254917e481eB44e9943F39138);
-        leverageShort = LeverageShort(0x5FD6eB55D12E759a21C09eF703fe0CBa1DC9d88D);
+    constructor(ILiquidityPool pool_, ILeverageShort short_) {
+        liquidityPool = pool_;
+        leverageShort = short_;
         transferUSDC = false;
     }
 

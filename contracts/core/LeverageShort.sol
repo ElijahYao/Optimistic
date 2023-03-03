@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "./LiquidityPool.sol";
+import "../interfaces/ILiquidityPool.sol";
 
 contract LeverageShort {
     // Global
     address public owner;
     bool transferUSDC;
 
-    LiquidityPool public immutable liquidityPool;
+    ILiquidityPool public immutable liquidityPool;
     int public constant oraclePriceDemical = 10 ** 2;
     int public constant usdcDemical = 10 ** 6;
 
@@ -24,10 +24,10 @@ contract LeverageShort {
     int public globalTokenAmount = 0;
     int public globalTokenValue = 0;
 
-    constructor() {
+    constructor(ILiquidityPool pool_) {
         owner = msg.sender;
         transferUSDC = false;
-        liquidityPool = LiquidityPool(0xd9145CCE52D386f254917e481eB44e9943F39138);
+        liquidityPool = pool_;
     }
 
     modifier isAdmin() {
