@@ -2,38 +2,31 @@
 pragma solidity ^0.8.17;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../interfaces/ILeverageShort.sol";
 import "../interfaces/ILiquidityPool.sol";
 
 import "hardhat/console.sol";
 
-interface USDC {
-    function balanceOf(address account) external view returns (uint256);
-
-    function allowance(address owner, address spender) external view returns (uint256);
-
-    function transfer(address recipient, uint256 amount) external returns (bool);
-
-    function approve(address spender, uint256 amount) external returns (bool);
-
-    function transferFrom(address sender, address recipient, uint256 amount) external returns (bool);
-}
 
 contract SubstanceExchange {
+    using SafeERC20 for IERC20;
+
     mapping(address => int) public traderUSDTBalance;
     ILeverageShort public immutable leverageShort;
     ILiquidityPool public immutable liquidityPool;
 
-    USDC public USDCToken;
+    IERC20 public USDCToken;
 
     bool transferUSDC;
 
     int public constant usdcDemical = 10 ** 6;
 
-    constructor(ILiquidityPool pool_, ILeverageShort short_) {
+    constructor(ILiquidityPool pool_, ILeverageShort short_, IERC20 usdc_) {
         liquidityPool = pool_;
         leverageShort = short_;
+        USDCToken = usdc_;
         transferUSDC = false;
     }
 
