@@ -172,10 +172,10 @@ contract LeverageToken {
     // 用户平空仓。
     // closeTokenAmount: 平仓数量
     function userCloseOrder(int closeTokenAmount) public {
-        require (closeTokenAmount > 0);
+        require (closeTokenAmount > 0, "invalid closeTokenAmount");
         address trader = msg.sender; 
 
-        require (traderPosition[trader].tokenAmount >= closeTokenAmount);
+        require (traderPosition[trader].tokenAmount >= closeTokenAmount, "insufficient user token amount.");
 
         int oldOpenPrice = traderPosition[trader].openPrice;
         int oldTokenAmount = traderPosition[trader].tokenAmount;
@@ -262,9 +262,9 @@ contract LeverageToken {
     }
 
     function lpWithDraw(int tokenAmount) public {
-        require (isStarted == true); 
-        require (tokenAmount > 0);
-        require (tokenBalance[msg.sender] >= tokenAmount);
+        require (isStarted == true, "not started!"); 
+        require (tokenAmount > 0, "invalid token amount");
+        require (tokenBalance[msg.sender] >= tokenAmount, "insufficient balance.");
         
         int tokenPrice = getTokenPrice();
         int withdrawAmount = tokenAmount * tokenPrice / gweiDemical;
@@ -272,7 +272,7 @@ contract LeverageToken {
         console.log("tokenPrice ", uint(tokenPrice));
         console.log("withdrawAmount ", uint(withdrawAmount));
 
-        require (withdrawAmount <= liquidityPoolTotalBalance - liquidityPoolLockedBalance);
+        require (withdrawAmount <= liquidityPoolTotalBalance - liquidityPoolLockedBalance, "insufficient available balance.");
         if (transferWETH) {
             bool success = WETHToken.transfer(msg.sender, uint(withdrawAmount * gweiDemical));
             require (success, "Transfer WETH failed");
