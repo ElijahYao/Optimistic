@@ -143,10 +143,10 @@ contract LeverageUPL {
 
     // 用户平空仓。
     function userCloseOrder(int closeTokenAmount) public {
-        require (closeTokenAmount > 0);
+        require (closeTokenAmount > 0, "invalid token amount");
         address trader = msg.sender; 
 
-        require (traderPosition[trader].tokenAmount >= closeTokenAmount);
+        require (traderPosition[trader].tokenAmount >= closeTokenAmount, "invalid token amount");
 
         int oldOpenPrice = traderPosition[trader].openPrice;
         int oldTokenAmount = traderPosition[trader].tokenAmount;
@@ -160,7 +160,7 @@ contract LeverageUPL {
 
         int movedMariginAmount = oldMarginAmount - traderPosition[trader].marginAmount;
 
-        require (movedMariginAmount + profit > 0);
+        require (movedMariginAmount + profit > 0, "your position can only be closed by admin");
         userBalance[trader] += movedMariginAmount + profit;
 
         globalTokenAmount -= closeTokenAmount;
@@ -178,11 +178,11 @@ contract LeverageUPL {
         require (marginAmount > 0, "invalid margin amount");
         require (traderPosition[msg.sender].tokenAmount > 0, "invalid user position");
         if (inc) {
-            require (userBalance[msg.sender] >= marginAmount);
+            require (userBalance[msg.sender] >= marginAmount, "insufficient balance");
             userBalance[msg.sender] -= marginAmount;
             traderPosition[msg.sender].marginAmount += marginAmount;
         } else {
-            require (traderPosition[msg.sender].marginAmount >= 0);
+            require (traderPosition[msg.sender].marginAmount >= 0, "insufficient balance");
             traderPosition[msg.sender].marginAmount -= marginAmount;
             userBalance[msg.sender] += marginAmount;
         }
@@ -199,8 +199,8 @@ contract LeverageUPL {
 
     // 平台强制平仓。
     function userForceCloseOrder(int closeTokenAmount, int finalPrice, address trader) public isAdmin {
-        require (closeTokenAmount > 0);
-        require (traderPosition[trader].tokenAmount >= closeTokenAmount);
+        require (closeTokenAmount > 0, "invalid token amount");
+        require (traderPosition[trader].tokenAmount >= closeTokenAmount, "insufficient token amount");
 
         int oldOpenPrice = traderPosition[trader].openPrice;
         int oldTokenAmount = traderPosition[trader].tokenAmount;
@@ -223,7 +223,7 @@ contract LeverageUPL {
     }
 
     function lpDeposit(int usdcAmount) public {
-        require (usdcAmount > 0);
+        require (usdcAmount > 0, "invalid amount");
         if (transferUSDC) {
             bool success = USDCToken.transferFrom(msg.sender, address(this), uint(usdcAmount));
             require (success, "Transfer USDC failed");
@@ -245,9 +245,9 @@ contract LeverageUPL {
     }
 
     function lpWithDraw(int tokenAmount) public {
-        require (isStarted == true); 
-        require (tokenAmount > 0);
-        require (tokenBalance[msg.sender] >= tokenAmount);
+        require (isStarted == true, "not start!"); 
+        require (tokenAmount > 0, "invalid token amount");
+        require (tokenBalance[msg.sender] >= tokenAmount, "insufficient token amount");
 
         int tokenPrice = getTokenPrice();
         int withdrawAmount = tokenAmount * tokenPrice / usdcDemical;
@@ -255,7 +255,7 @@ contract LeverageUPL {
         console.log("tokenPrice ", uint(tokenPrice));
         console.log("withdrawAmount ", uint(withdrawAmount));
 
-        require (withdrawAmount <= liquidityPoolTotalBalance - liquidityPoolLockedBalance);
+        require (withdrawAmount <= liquidityPoolTotalBalance - liquidityPoolLockedBalance, "insufficient balance");
         if (transferUSDC) {
             bool success = USDCToken.transfer(msg.sender, uint(withdrawAmount));
             require (success, "Transfer USDC failed");
